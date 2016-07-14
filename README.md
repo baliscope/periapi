@@ -20,5 +20,5 @@ NOTE: As of 7/14/2016 you will need the peri consumer secret and consumer key to
 
 ## Current To-do's:
 
-*Implement autocapper (pyriscope? youtube-dl?)
-*Add a listener that reviews the notifications stream and autocaps any new broadcasts.
+1. Implement autocapper (pyriscope? youtube-dl?)
+2. Add a listener that reviews the notifications stream and autocaps any new broadcasts.
