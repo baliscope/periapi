@@ -1,140 +1,181 @@
 #!/usr/bin/env python3
 """
-The MIT License (MIT)
-Copyright © 2016 Baliscope
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the “Software”), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
+Periscope API for the poor
 """
+# pylint: disable=broad-except,import-error
 
 from urllib.parse import parse_qsl
 
 import json
+
 import oauth2 as oauth
-import os
 import requests
-import webbrowser
+
+from path import path
+from .logging import logging
+
+RTOKEN_URL = 'https://api.twitter.com/oauth/request_token?oauth_callback=oob'
+ATOKEN_URL = 'https://api.twitter.com/oauth/access_token'
+AUTH_URL = 'https://api.twitter.com/oauth/authorize'
+VERIFY_URL = 'https://api.twitter.com/1.1/account/verify_credentials.json?'\
+             'include_entities=false&skip_status=true'
+PERI_LOGIN_URL = 'https://api.periscope.tv/api/v2/loginTwitter'
 
 
-def stash_credentials(access_token, user_info):
-    with open('perikeys.txt', 'w') as f:
-        f.write('Access Token: ' + access_token['oauth_token'] + '\n')
-        f.write('Access Token Secret: ' + access_token['oauth_token_secret'] + '\n')
-        f.write('Username: ' + user_info['screen_name'] + '\n')
-        f.write('User ID: ' + user_info['id_str'] + '\n')
+class PeriConfig(dict):
+    """Persistent peri config dict"""
+    def __init__(self, *args, **kw):
+        super().__init__(*args, **kw)
+        self.file = path(".peri.conf")
+        if not self.file.isfile():
+            self.file = path("~/.peri.conf").expand()
+        if self.file.isfile():
+            self.load()
+
+    def load(self):
+        """Load the config from file"""
+        with self.file.open("r") as inp:
+            self.update(json.load(inp))
+
+    def write(self):
+        """Persist the config to file"""
+        tmp = path(self.file + ".tmp")
+        try:
+            with tmp.open("w") as tmpp:
+                json.dump(self, tmpp, indent=2)
+            try:
+                self.file.unlink()
+            except Exception:
+                pass
+            tmp.move(self.file)
+        finally:
+            try:
+                tmp.unlink()
+            except Exception:
+                pass
 
 
-def check_for_stored_credentials():
-    if os.path.isfile('perikeys.txt'):
-        with open('perikeys.txt', mode='r') as f:
-            credentials = {}
-            for line in f:
-                credentials[line.split(':')[0].strip()] = line.split(':')[1].strip()
-        return credentials
-    else:
-        return False
+class LoginSession(requests.Session):
+    """Provides an authenticated requests.Session"""
 
+    def __init__(self, *args, **kw):
+        super().__init__(*args, **kw)
 
-class Login:
-    def __init__(self):
         # Periscope API keys
-        self._periscope_consumer_key = ''
-        self._periscope_consumer_secret = ''
+        config = self.config = PeriConfig()
+        self.headers.update({
+            'User-Agent': 'Periscope/3313 (iPhone; iOS 7.1.1; Scale/2.00)',
+            "Accept-Encoding": "gzip, deflate",
+            })
 
-        self.cookie = ''
-        self.header = {
-            'user-agent': 'Periscope/3313 (iPhone; iOS 7.1.1; Scale/2.00)',
-        }
+        cookie = config.get("cookie", "")
 
-        stored_credentials = check_for_stored_credentials()
-        if stored_credentials:
-            self.cookie = self._get_periscope_cookie(stored_credentials)
+        # If Periscope login process doesn't work with the stored credentials
+        # or if no stored credentials existed in the first place, then we need
+        # to login to Twitter and grab a new auth token and secret.
+        if not cookie:
+            cookie = self.authenticate()
+        self.cookie = cookie
+        self.uid = config["uid"]
+        self.name = config["name"]
 
-        # If Periscope login process doesn't work with the stored credentials or if no stored credentials
-        # existed in the first place, then we need to login to Twitter and grab a new auth token and secret.
-        if not self.cookie or not stored_credentials:
-            access_token, user_info = self._get_twitter_credentials()
-            stash_credentials(access_token, user_info)
-            stored_credentials = check_for_stored_credentials()
-            self.cookie = self._get_periscope_cookie(stored_credentials)
+        if not self.cookie:
+            raise ValueError("Failed to obtain cookie")
 
-    def _get_twitter_credentials(self):
+    def authenticate(self):
+        """Authenticate with the twitter/periscope API"""
 
-        # Twitter OAuth endpoint urls needed for getting authorization from Twitter
-        request_token_url = 'https://api.twitter.com/oauth/request_token?oauth_callback=oob'
-        access_token_url = 'https://api.twitter.com/oauth/access_token'
-        authorize_url = 'https://api.twitter.com/oauth/authorize'
-        verify_url = 'https://api.twitter.com/1.1/account/verify_credentials.json?include_entities=false&skip_status=true'
+        config = self.config
+        cons_key = config.get("consumer_key")
+        cons_sec = config.get("consumer_secret")
+        if not cons_key or not cons_sec:
+            raise ValueError(".peri.conf does not provide consumer_key or "
+                             "consumer_secret")
 
         # Set up our OAuth request headers, sign the request, etc.
-        consumer = oauth.Consumer(self._periscope_consumer_key, self._periscope_consumer_secret)
+        consumer = oauth.Consumer(cons_key, cons_sec)
         client = oauth.Client(consumer)
 
-        # Make initial OAuth request to Twitter (gets us a temporary token used for the authorization process)
-        resp, content = client.request(request_token_url, 'GET')
+        # Make initial OAuth request to Twitter (gets us a temporary token
+        # used for the authorization process)
+        resp, content = client.request(RTOKEN_URL, 'GET')
         if resp['status'] != '200':
-            raise Exception('Invalid response. Could not initialize authentication process with Twitter.')
+            raise IOError(
+                'Could not initialize authentication process with Twitter')
 
-        # Parse the response from Twitter's API and use it to load the authorization page
-        request_token = dict(parse_qsl(content.decode('ascii')))
-        webbrowser.open('{0}?oauth_token={1}'.format(authorize_url, request_token['oauth_token']))
+        # Parse the response from Twitter's API and use it to load the
+        # authorization page
+        request_token = dict(parse_qsl(content.decode('utf-8')))
+        print('open this:\n{0}?oauth_token={1}'.format(
+            AUTH_URL, request_token['oauth_token']))
 
         # Get the Twitter PIN number from the user
         oauth_verifier = input('Please enter the PIN: ')
 
         # Prepare our second OAuth request now that we have authorization
-        token = oauth.Token(request_token['oauth_token'], request_token['oauth_token_secret'])
+        token = oauth.Token(
+            request_token['oauth_token'],
+            request_token['oauth_token_secret']
+            )
         token.set_verifier(oauth_verifier)
         client = oauth.Client(consumer, token)
 
-        # Make request and parse the response from Twitter's API. The OAuth key we need to login to Periscope is in
-        # access_token['oauth_token'] and the secret is in access_token['oauth_token_secret']
-        resp, content = client.request(access_token_url, 'POST')
+        # Make request and parse the response from Twitter's API. The OAuth key
+        # we need to login to Periscope is in access_token['oauth_token'] and
+        # the secret is in access_token['oauth_token_secret']
+        resp, content = client.request(ATOKEN_URL, 'POST')
         if resp['status'] != '200':
-            raise Exception('Invalid response. Could not complete authentication process with Twitter.')
-        access_token = dict(parse_qsl(content.decode('ascii')))
+            raise IOError(
+                'Could not complete authentication process with Twitter')
+        access_token = dict(parse_qsl(content.decode('utf-8')))
 
         # Get the User ID and Username from Twitter
-        token = oauth.Token(access_token['oauth_token'], access_token['oauth_token_secret'])
+        token = oauth.Token(
+            access_token['oauth_token'],
+            access_token['oauth_token_secret']
+            )
         client = oauth.Client(consumer, token)
-        resp, content = client.request(verify_url, 'GET')
+        resp, content = client.request(VERIFY_URL, 'GET')
         if resp['status'] != '200':
-            raise Exception('Invalid response. Could not complete verification process with Twitter.')
-        user_info = json.loads(content.decode('ascii'))
+            raise IOError(
+                'Could not complete verification process with Twitter')
+        user_info = json.loads(content.decode('utf-8'))
 
-        return access_token, user_info
+        config["token"] = access_token["oauth_token"]
+        config["token_secret"] = access_token["oauth_token_secret"]
+        config["name"] = user_info["screen_name"]
+        config["uid"] = user_info["id_str"]
+        logging.debug("access %r", access_token)
+        logging.debug("user_info %r", user_info)
 
-    def _get_periscope_cookie(self, credentials):
         login_payload = {
-            'session_secret': credentials['Access Token Secret'],
-            'session_key': credentials['Access Token'],
-            'user_id': credentials['User ID'],
-            'user_name': credentials['Username'],
+            'session_secret': config["token_secret"],
+            'session_key': config["token"],
+            'user_id': config["uid"],
+            'user_name': config["name"],
             'phone_number': '',
             'vendor_id': '',
             'bundle_id': 'com.bountylabs.periscope',
         }
 
-        # Send payload to login to Periscope using the credentials obtained from Twitter
-        r = requests.post('https://api.periscope.tv/api/v2/loginTwitter', json=login_payload, headers=self.header)
-        if r.status_code != 200:
-            print('Invalid response. Could not complete authentication with Periscope.')
-            return None
-        else:
-            return r.json()['cookie']
+        # Send payload to login to Periscope using the credentials obtained
+        resp = self.post(PERI_LOGIN_URL, json=login_payload)
+        if resp.status_code != 200:
+            raise IOError('Could not complete authentication with Periscope')
+        cookie = config["cookie"] = resp.json()["cookie"]
+        config.write()
+        return cookie
 
+    def post_peri(self, *args, **kw):
+        """Make a post to the peri API"""
 
-if __name__ == '__main__':
-    print(Login().cookie)
+        # stuff in the cookie, if there is a payload
+        payload = kw.get("json")
+        if payload is not None:
+            payload["cookie"] = self.cookie
+            kw["json"] = payload
+            logging.debug("payload: %r", payload)
+        resp = self.post(*args, **kw)
+        if resp.status_code != 200:
+            raise IOError("API call failed: {}".format(resp.status_code))
+        return resp.json()

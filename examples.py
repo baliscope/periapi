@@ -19,26 +19,19 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 """
 
-import periapi
-
-# Login to Periscope and get authentication cookie and header needed to make API calls
-s = periapi.Login()
-cookie = s.cookie
-header = s.header
-print(s.cookie)
-print(s.header)
+from periapi import PeriAPI
 
 # Initialize API
-ac = periapi.APICall(cookie=cookie, header=header)
+ac = PeriAPI()
 
 # Get a user's ID number (we need this to refer to their account in other API calls)
-uid = ac.get_user_id('Tito1990')
+uid = ac.finduser_id('Tito1990')
 
 # Start following someone
 ac.follow(uid)
 
 # Show entire broadcast history of a user
-bc_history = ac.user_broadcast_history(uid)
+bc_history = ac.get_user_broadcast_history(uid)
 print(bc_history)
 
 # show the URL of their most recent broadcast
@@ -47,7 +40,7 @@ if len(bc_history) > 0:
     print('https://www.periscope.tv/w/' + bc_id)
 
 # Get one frame of the notifications broadcast feed (i.e. get notifications from users you're following)
-notifications_history = ac.get_notifications()
+notifications_history = ac.notifiations
 print(notifications_history)
 
 # Show the URL to the most recent broadcast in your notifications stream
