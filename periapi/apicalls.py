@@ -34,9 +34,7 @@ class APICall:
         }
         r = requests.post('https://api.periscope.tv/api/v2/follow', json=payload, headers=self.header)
         if r.status_code != 200:
-            print('Periscope API Call failed.')
-            print(r)
-            print(r.json())
+            raise Exception('Periscope API Call failed.')
         if r.json()['success'] == 'true':
             return True
         elif r.json()['success'] == 'false':
@@ -49,9 +47,7 @@ class APICall:
         }
         r = requests.post('https://api.periscope.tv/api/v2/unfollow', json=payload, headers=self.header)
         if r.status_code != 200:
-            print('Periscope API Call failed.')
-            print(r)
-            print(r.json())
+            raise Exception('Periscope API Call failed.')
         if r.json()['success'] == 'true':
             return True
         elif r.json()['success'] == 'false':
@@ -64,9 +60,7 @@ class APICall:
         }
         r = requests.post('https://api.periscope.tv/api/v2/userBroadcasts', json=payload, headers=self.header)
         if r.status_code != 200:
-            print('Periscope API Call failed.')
-            print(r)
-            print(r.json())
+            raise Exception('Periscope API Call failed.')
         return r.json()
 
     def get_notifications(self):
@@ -85,7 +79,7 @@ class APICall:
         }
         r = requests.post('https://api.periscope.tv/api/v2/userSearch', json=payload, headers=self.header)
         if r.status_code != 200:
-            print('Periscope API Call failed.')
+            raise Exception('Periscope API Call failed.')
         for i in r.json():
             if i['username'].lower() == username.lower():
                 return i['id']
