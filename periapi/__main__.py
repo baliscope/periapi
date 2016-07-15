@@ -45,7 +45,7 @@ def run():
 
     logging.info("following: %r",
         {u["display_name"]: u["username"] for u in  papi.following})
-    logging.info("and their broadcasts: %r", papi.notifications)
+    logging.info("and their broadcasts: %r", {(b["id"], b["state"]): b["username"] for b in papi.notifications})
     sys.exit(0)
 
 if __name__ == "__main__":
