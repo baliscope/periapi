@@ -25,7 +25,7 @@ from periapi import PeriAPI
 ac = PeriAPI()
 
 # Get a user's ID number (we need this to refer to their account in other API calls)
-uid = ac.finduser_id('Tito1990')
+uid = ac.find_user_id('Tito1990')
 
 # Start following someone
 ac.follow(uid)
@@ -40,7 +40,7 @@ if len(bc_history) > 0:
     print('https://www.periscope.tv/w/' + bc_id)
 
 # Get one frame of the notifications broadcast feed (i.e. get notifications from users you're following)
-notifications_history = ac.notifiations
+notifications_history = ac.notifications
 print(notifications_history)
 
 # Show the URL to the most recent broadcast in your notifications stream
