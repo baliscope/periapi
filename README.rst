@@ -5,12 +5,12 @@ periscope.tv API (periapi)
 WARNING: This script is a proof of concept only. It currently stores your personal peri credential key and secret on your hard drive, unencrypted, in a text file. It is strongly suggested you make a throwaway Twitter for use with this script.
 
 NOTE: As of 7/14/2016 you will need the peri consumer secret and consumer key to use this script.
-Please create either `$PWD/.peri.conf` or `$HOME/.peri.conf` containing a JSON dict with `consumer_secret` and `consumer_key`. Don't ask the authors for the values tho!
+Please create either :code:`$PWD/.peri.conf` or :code:`$HOME/.peri.conf` containing a JSON dict with :code:`consumer_secret` and :code:`consumer_key`. Don't ask the authors for the values tho!
 
 Requirements
 ------------
 
-Python 3 and whatever is in `requirements.txt`
+Python 3 and whatever is in :code:`requirements.txt`
 
 Usage
 -----
@@ -26,3 +26,8 @@ TODO
 
 1. Implement autocapper (pyriscope? youtube-dl?)
 2. Add a listener that reviews the notifications stream and autocaps any new broadcasts.
+
+Develop
+-------
+
+Just do the usual :code:`python setup.py develop` routine, and then test with the :code:`peritest` command that installs.
