@@ -50,7 +50,6 @@ class PeriAPI:
     @bool_response
     def follow(self, user_id):
         """Follow a user"""
-
         return self._post(
             'https://api.periscope.tv/api/v2/follow',
             {"user_id": user_id}
@@ -87,7 +86,7 @@ class PeriAPI:
             )
 
     def find_user_id(self, username):
-        """Most APIs require the user id, not name, so find it"""
+        """Most API calls require the user id, not name, so find it"""
         results = self._post(
             "https://api.periscope.tv/api/v2/userSearch",
             {"search": username}
