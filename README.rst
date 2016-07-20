@@ -24,8 +24,8 @@ Usage
 TODO
 ----
 
-1. Implement autocapper (pyriscope? youtube-dl?)
-2. Add a listener that reviews the notifications stream and autocaps any new broadcasts.
+1. Add basic (CLI) user interface
+2. Update readme with new instructions once interface is done
 
 Develop
 -------
