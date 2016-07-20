@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Periscope API for the poor
+Periscope API for the masses
 """
 
 from functools import wraps
