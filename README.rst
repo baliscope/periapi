@@ -15,6 +15,7 @@ Python 3 and whatever is in :code:`requirements.txt`
 Getting Setup (for noobs)
 -------------------------
 
+0. Get a Twitter account setup with Periscope
 1. Install Python 3 if you don't have it.
 2. This needs the following packages: youtube-dl, OAuth2, requests, and path.py. To install them, open a terminal window (cmd or Powershell for Windows users). Type each of the following commands and press enter after each one: :code:`pip3 install youtube-dl`; :code:`pip3 install OAuth2`; :code:`pip3 install requests`; :code:`pip3 install path.py`.
 3. Enable ffmpeg for youtube-dl: see https://github.com/rg3/youtube-dl#on-windows-how-should-i-set-up-ffmpeg-and-youtube-dl-where-should-i-put-the-exe-files for help. 
@@ -37,7 +38,9 @@ TODO
 
 1. Test coverage
 2. Add more API calls
-3. UI????
+3. Re-download replays after the associated live has finished
+4. UI????
+5. Species code
 
 Develop
 -------
