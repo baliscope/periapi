@@ -2,7 +2,7 @@
 """
 Periscope API for the masses
 """
-#pylint: disable=broad-except
+# pylint: disable=broad-except
 
 import sys
 import logging
@@ -10,6 +10,7 @@ import logging
 from argparse import ArgumentParser
 
 from . import PeriAPI
+from . import AutoCap
 from . import __version__
 
 
@@ -25,17 +26,17 @@ def run():
         level=logging.DEBUG
         if args.verbose else
         logging.INFO
-        )
+    )
     logging.getLogger("requests").setLevel(
         level=logging.DEBUG
         if args.verbose else
         logging.WARN
-        )
+    )
 
     logging.info("Running PeriAPI v%s", __version__)
     papi = PeriAPI()
     logging.info("You are %s [%s / %s]",
-        papi.session.name, papi.session.uid, papi.pubid)
+                 papi.session.name, papi.session.uid, papi.pubid)
     for user in sys.argv[1:]:
         try:
             uid = papi.find_user_id(user)
@@ -44,9 +45,16 @@ def run():
             logging.exception("Failed to lookup user: %s", user)
 
     logging.info("following: %r",
-        {u["display_name"]: u["username"] for u in  papi.following})
-    logging.info("and their broadcasts: %r", {(b["id"], b["state"]): b["username"] for b in papi.notifications})
+                 {u["display_name"]: u["username"] for u in papi.following})
+    logging.info("and their broadcasts: %r",
+                 {(b["id"], b["state"]): b["username"] for b in papi.notifications})
+
+    cap = AutoCap(api=papi)
+    logging.info("%s new broadcasts found in notification stream.",
+                 len(cap.listener.check_for_new()))
+
     sys.exit(0)
+
 
 if __name__ == "__main__":
     run()

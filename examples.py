@@ -20,19 +20,21 @@ THE SOFTWARE.
 """
 
 from periapi import PeriAPI
+from periapi import AutoCap
 
 # Initialize API
-ac = PeriAPI()
+api = PeriAPI()
 
 # Get a user's ID number (we need this to refer to their account in other API calls)
-uid = ac.find_user_id('Tito1990')
+uid = api.find_user_id('Tito1990')
 
 # Start following someone
-ac.follow(uid)
+api.follow(uid)
 
 # Show entire broadcast history of a user
-bc_history = ac.get_user_broadcast_history(uid)
+bc_history = api.get_user_broadcast_history(uid)
 print(bc_history)
+
 
 # show the URL of their most recent broadcast
 if len(bc_history) > 0:
@@ -40,8 +42,9 @@ if len(bc_history) > 0:
     print('https://www.periscope.tv/w/' + bc_id)
 
 # Get one frame of the notifications broadcast feed (i.e. get notifications from users you're following)
-notifications_history = ac.notifications
+notifications_history = api.notifications
 print(notifications_history)
+
 
 # Show the URL to the most recent broadcast in your notifications stream
 if len(notifications_history) > 0:
@@ -49,4 +52,9 @@ if len(notifications_history) > 0:
     print('https://www.periscope.tv/w/' + bc_id)
 
 # Unfollow someone
-ac.unfollow(uid)
+api.unfollow(uid)
+
+# Needed to prevent multiprocessing from spawning processes recursively on Windows
+if __name__ == '__main__':
+    cap = AutoCap(api)
+    cap.start()
