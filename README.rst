@@ -10,28 +10,39 @@ Please create either :code:`$PWD/.peri.conf` or :code:`$HOME/.peri.conf` contain
 Requirements
 ------------
 
-Python 3 and whatever is in :code:`requirements.txt`
+Python 3.4+ and whatever is in :code:`requirements.txt`
 
 Getting Setup (for noobs)
 -------------------------
 
-0. Get a Twitter account setup with Periscope
+0. Get a Twitter account setup with Periscope. (If you don't have a phone to do this with, check out OpenPeriscope.)
 1. Install Python 3 if you don't have it.
-2. This needs the following packages: youtube-dl, OAuth2, requests, and path.py. To install them, open a terminal window (cmd or Powershell for Windows users). Type each of the following commands and press enter after each one: :code:`pip3 install youtube-dl`; :code:`pip3 install OAuth2`; :code:`pip3 install requests`; :code:`pip3 install path.py`.
-3. Enable ffmpeg for youtube-dl: see https://github.com/rg3/youtube-dl#on-windows-how-should-i-set-up-ffmpeg-and-youtube-dl-where-should-i-put-the-exe-files for help. 
-4. (Optional) Setup a .conf file for youtube-dl. This lets you set a default download directory among other things. https://github.com/rg3/youtube-dl#configuration
-5. Clone this repo (download this repository as a .zip), unzip it somewhere, and 
-6. Setup the :code:`.peri.conf` file (delete the :code:`.example` from the end of the filename), open it in a text editor, and replace the gibberish strings with the Periscope Consumer Key and Consumer Secret. If you don't have this info, best of luck, but we can't help.
-7. Run :code:`example-cli.py`
+2. This needs the following packages: pyriscope, OAuth2, requests, and path.py. To install them, open a terminal window (cmd or Powershell for Windows users). Type each of the following commands and press enter after each one: :code:`pip3 install pyriscope`; :code:`pip3 install OAuth2`; :code:`pip3 install requests`; :code:`pip3 install path.py`.
+3. If you don't have ffmpeg already working with pyriscope, download ffmpeg and place ffmpeg.exe in the same directory as :code:`example-cli.py`
+4. Clone this repo (download this repository as a .zip) and unzip it somewhere.
+5. Go to the :code:`.peri.conf` file, delete the :code:`.example` from the end of the filename, open it in a text editor, and replace the gibberish strings with the Periscope Consumer Key and Consumer Secret. If you don't have this info, best of luck, but we can't help.
+6. Run :code:`example-cli.py`
 
 Usage
 -----
 
-1. Run example-cli.py to execute a very simple command line interface that allows one to follow/unfollow/view followers and turn on autocapping of their broadcasts.
+1. Run :code:`example-cli.py` to execute a very simple command line interface that allows one to follow/unfollow/view followers and turn on autocapping of their broadcasts.
 2. On first run, you will need to execute a PIN-based authentication with Twitter. The script will give you a twitter.com url to visit and once you are logged in it will display a PIN. Enter that number into the python console and press enter. 
 3. Your credentials will be saved (see the WARNING at the beginning of this readme) so step 2 will not need to be repeated unless your credentials get revoked.
 4. You will now be logged into the periscope API and can do a few fun things. More to come
 5. (OPTIONAL) Start coding and send me pull requests :)
+
+Functionality Notes
+-------------------
+
+1. Once Autocap is started, the program can only be exited by killing it. Graceful exit coming soon(ish).
+2. At Autocap startup, this program attempts to download ALL broadcasts in your notification stream, whether or not they are "new". Broadcasts that exist on disk will be marked as "completed" but not re-downloaded.
+3. If you add a new account to your "following" list while Autocap is running, this program attempts to download ALL broadcasts of theirs in your notification stream, whether or not they are "new".
+4. Other than the two previous exceptions, this program will only download broadcasts with a start time newer than the most recent start time out of all broadcasts downloaded.
+5. The notification stream only contains the past 24 hours of broadcasts. Option to download all broadcasts by a user coming soon.
+6. All downloads will automatically be converted to mp4 during or after download.
+7. Once a live broadcast is finished, an attempt will be made to download the replay for that live broadcast.
+8. Every now and then, ffmpeg will print warning statements to console. These can typically be ignored.
 
 TODO
 ----
@@ -40,7 +51,6 @@ TODO
 2. Add more API calls
 3. Re-download replays after the associated live has finished
 4. UI????
-5. Species code
 
 Develop
 -------
