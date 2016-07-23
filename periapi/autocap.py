@@ -67,8 +67,8 @@ class AutoCap:
 
             time.sleep(self.interval)
 
-        killstr = "If you wish to terminate any unfinished downloads, please enter 'killall', " \
-                  "otherwise, just press Return."
+        killstr = "If you wish to terminate any unfinished downloads immediately, please enter " \
+                  "'killall', otherwise, just press Return: "
 
         if input(killstr).strip().lower() == 'killall':
             self.downloadmgr.pool.terminate()
@@ -82,7 +82,7 @@ class AutoCap:
         self.keep_running = False
 
     def _send_to_downloader(self, new_bcs):
-        """Unpack results from listener and start download if new. Set latest dl time."""
+        """Unpack results from listener and start download. Set latest dl time."""
         for bc_id, bc_name, bc_dtstring in new_bcs:
             self.downloadmgr.start_dl(bc_id, bc_name)
 
@@ -151,7 +151,6 @@ class Listener:
 
             if self.last_new_bc:
                 if bc_datetime <= dt_parse(self.last_new_bc):
-                    print('skipping broadcast at' + bc_dtstring)
                     continue
 
             bc_id = i['id']
@@ -201,14 +200,16 @@ class DownloadManager:
 
         self.active_downloads[bc_id] = bc_name
 
+        print("[{0}] Adding Download: {1}".format(current_datetimestring(), bc_name))
+
     def _dl_complete(self, bc_id):
         bc_name = self.active_downloads[bc_id]
-        print("{0} Completed: {1}".format(current_datetimestring(), bc_name))
+        print("[{0}] Completed: {1}".format(current_datetimestring(), bc_name))
         self.completed_downloads.append(bc_name)
         del self.active_downloads[bc_id]
 
     def _dl_failed(self, bc_id):
         bc_name = self.active_downloads[bc_id]
-        print("{0} Failed: {1}".format(current_datetimestring(), bc_name))
+        print("[{0}] Failed: {1}".format(current_datetimestring(), bc_name))
         self.failed_downloads.append(bc_name)
         del self.active_downloads[bc_id]
