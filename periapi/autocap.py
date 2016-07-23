@@ -40,7 +40,7 @@ def mute():
 class AutoCap:
     """Class to check notifications stream and start capping new broadcasts"""
 
-    def __init__(self, api, print_status=True, kb_stop=True):
+    def __init__(self, api, print_status=True, kb_stop=False):
         self.print_status = print_status
         self.kb_stop = kb_stop
         self.keep_running = True

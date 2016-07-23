@@ -27,7 +27,7 @@ class BadCLI:
                 print("\t1 - Show followed users")
                 print("\t2 - Follow a user")
                 print("\t3 - Unfollow a user")
-                print("\t4 - Start Autocapper (press Enter at any time to stop autocapping)")
+                print("\t4 - Start Autocapper")
                 print("\t0 - Exit this piece of shit software\n")
                 choice = input("Please select an option (0-4): ")
                 if choice == '0':
