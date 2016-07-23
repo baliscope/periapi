@@ -20,7 +20,7 @@ Getting Setup (for noobs)
 2. This needs the following packages: pyriscope, OAuth2, requests, and path.py. To install them, open a terminal window (cmd or Powershell for Windows users). Type each of the following commands and press enter after each one: :code:`pip3 install pyriscope`; :code:`pip3 install OAuth2`; :code:`pip3 install requests`; :code:`pip3 install path.py`.
 3. If you don't have ffmpeg already working with pyriscope, download ffmpeg and place ffmpeg.exe in the same directory as :code:`example-cli.py`
 4. Clone this repo (download this repository as a .zip) and unzip it somewhere.
-5. Go to the :code:`.peri.conf` file, delete the :code:`.example` from the end of the filename, open it in a text editor, and replace the gibberish strings with the Periscope Consumer Key and Consumer Secret. If you don't have this info, best of luck, but we can't help.
+5. Go to the :code:`.peri.conf.example` file, delete the :code:`.example` from the end of the filename, open it in a text editor, and replace the gibberish strings with the Periscope Consumer Key and Consumer Secret. If you don't have this info, best of luck, but we can't help.
 6. Run :code:`example-cli.py`
 
 Usage
@@ -49,7 +49,6 @@ TODO
 
 1. Test coverage
 2. Add more API calls
-3. Re-download replays after the associated live has finished
 4. UI????
 
 Develop
