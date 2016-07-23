@@ -6,14 +6,12 @@ Periscope API for the masses
 import os
 import sys
 import time
-import threading
 import youtube_dl
 
 from multiprocessing import Pool
 from dateutil.parser import parse as dt_parse
 
 BROADCAST_URL_FORMAT = 'https://www.periscope.tv/w/'
-DOWNLOAD_CMD = 'youtube-dl'
 DEFAULT_NOTIFICATION_INTERVAL = 15
 CORES_TO_USE = 2
 
@@ -40,21 +38,19 @@ def mute():
 class AutoCap:
     """Class to check notifications stream and start capping new broadcasts"""
 
-    def __init__(self, api, print_status=True, kb_stop=False):
+    def __init__(self, api, print_status=True):
         self.print_status = print_status
-        self.kb_stop = kb_stop
         self.keep_running = True
 
         self.api = api
         self.config = self.api.session.config
 
-        self.listener = Listener(api=self.api)
+        self.listener = Listener(api=self.api, check_backlog = True)
         self.downloadmgr = DownloadManager(api=self.api)
 
     def start(self):
         """Starts autocapper loop"""
-        if self.kb_stop:
-            threading.Thread(target=self.stop).start()
+
         while self.keep_running:
 
             new_broadcasts = self.listener.check_for_new()
@@ -123,10 +119,12 @@ class AutoCap:
 class Listener:
     """Class to check notifications stream for new broadcasts and return new broadcast ids"""
 
-    def __init__(self, api):
+    def __init__(self, api, check_backlog=False):
         self.api = api
 
         self.config = self.api.session.config
+
+        self.check_backlog = check_backlog
 
     def check_for_new(self):
         """Check for new broadcasts"""
@@ -136,6 +134,7 @@ class Listener:
             return None
 
         new_broadcast_ids = self.process_notifications(current_notifications)
+
         if len(new_broadcast_ids) == 0:
             return None
 
@@ -149,7 +148,7 @@ class Listener:
             bc_dtstring = i['start']
             bc_datetime = dt_parse(bc_dtstring)
 
-            if self.last_new_bc:
+            if self.last_new_bc and not self.check_backlog:
                 if bc_datetime <= dt_parse(self.last_new_bc):
                     continue
 
@@ -162,6 +161,9 @@ class Listener:
             bc_name = ' '.join([username, bc_date, bc_time, bc_id])
 
             new_broadcast_ids.append((bc_id, bc_name, bc_dtstring))
+
+        if self.check_backlog:
+            self.check_backlog = False
 
         return new_broadcast_ids
 

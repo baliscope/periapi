@@ -32,14 +32,16 @@ class BadCLI:
                 choice = input("Please select an option (0-4): ")
                 if choice == '0':
                     enditall()
-                if choice == '1':
+                elif choice == '1':
                     self.show_followed_users()
-                if choice == '2':
+                elif choice == '2':
                     self.follow_user(input("Enter their username: "))
-                if choice == '3':
+                elif choice == '3':
                     self.unfollow_user(input("Enter their username: "))
-                if choice == '4':
+                elif choice == '4':
                     self.start_autocapper()
+                else:
+                    print("Invalid selection. Please try again.")
             except ValueError as e:
                 print(e)
 
