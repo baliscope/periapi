@@ -1,5 +1,5 @@
 """
-Periscope API for the poor
+Periscope API for the masses
 """
 
-__version__ = "0.3.0"
+__version__ = "0.3.1"
