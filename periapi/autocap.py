@@ -6,7 +6,7 @@ Periscope API for the masses
 import os
 import sys
 import time
-from multiprocessing import Pool, Semaphore
+from multiprocessing import Pool
 
 import pyriscope.processor
 
@@ -16,7 +16,6 @@ BROADCAST_URL_FORMAT = 'https://www.periscope.tv/w/'
 DEFAULT_NOTIFICATION_INTERVAL = 15
 DOWNLOAD_DIRECTORY = os.path.join(os.path.expanduser('~'), 'downloads')
 CORES_TO_USE = -(-os.cpu_count() // 2)
-MAX_SIMULTANEOUS_DOWNLOADS = CORES_TO_USE * 2
 MAX_DOWNLOAD_ATTEMPTS = 3
 EXTENSIONS = ['.mp4', '.ts']
 
@@ -51,33 +50,33 @@ def rename_live(fname):
 
 def start_download(broadcast):
     """Starts download using pyriscope"""
-    with semaphore:
-        try:
-            os.chdir(DOWNLOAD_DIRECTORY)
 
-            if broadcast.isreplay and replay_downloaded(broadcast):
-                return broadcast
+    try:
+        os.chdir(DOWNLOAD_DIRECTORY)
 
-            if broadcast.islive:
-                rename_live(broadcast.filename)
+        if broadcast.isreplay and replay_downloaded(broadcast):
+            return broadcast
 
-            url = BROADCAST_URL_FORMAT + broadcast.id
+        if broadcast.islive:
+            rename_live(broadcast.filename)
 
-            pyriscope.processor.process([url, '-C', '-n', broadcast.filename])
+        url = BROADCAST_URL_FORMAT + broadcast.id
 
-            if download_successful(broadcast):
-                return broadcast
+        pyriscope.processor.process([url, '-C', '-n', broadcast.filename])
 
-            raise Exception(broadcast.id)
+        if download_successful(broadcast):
+            return broadcast
 
-        except SystemExit as _:
-            if not _.code or _.code == 0:
-                return broadcast
-            else:
-                raise SystemExit(broadcast.id)
+        raise Exception(broadcast.id)
 
-        except Exception:
-            raise BaseException(broadcast.id)
+    except SystemExit as _:
+        if not _.code or _.code == 0:
+            return broadcast
+        else:
+            raise SystemExit(broadcast.id)
+
+    except Exception:
+        raise BaseException(broadcast.id)
 
 
 def download_successful(broadcast):
@@ -103,10 +102,8 @@ def current_datetimestring():
     return " ".join([time.strftime('%x'), time.strftime('%X')])
 
 
-def initialize_download(semaphore_):
+def initialize_download():
     """Write output from our youtube-dl processes to devnull"""
-    global semaphore
-    semaphore = semaphore_
     sys.stdout = open(os.devnull, "w")
     sys.stderr = open(os.devnull, "w")
 
@@ -378,9 +375,7 @@ class DownloadManager:
         self.download_progress['completed'] = list()
         self.download_progress['failed'] = list()
 
-        semaphore_ = Semaphore(CORES_TO_USE)
-        self.pool = Pool(CORES_TO_USE, initializer=initialize_download, initargs=(semaphore_,),
-                         maxtasksperchild=1)
+        self.pool = Pool(CORES_TO_USE, initializer=initialize_download, maxtasksperchild=1)
 
     def start_dl(self, broadcast):
         """Adds a download task to the multiprocessing pool"""
