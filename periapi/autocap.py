@@ -107,6 +107,7 @@ def initialize_download(semaphore_):
     global semaphore
     semaphore = semaphore_
     sys.stdout = open(os.devnull, "w")
+    sys.stderr = open(os.devnull, "w")
 
 
 class Broadcast:

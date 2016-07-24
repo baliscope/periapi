@@ -51,6 +51,8 @@ class BadCLI:
                     print("Invalid selection. Please try again.")
             except ValueError as e:
                 print(e)
+            except KeyboardInterrupt:
+                print("Stopping autocapper...")
 
     def show_followed_users(self):
         """Shows who you're following"""
