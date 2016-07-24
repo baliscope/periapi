@@ -15,6 +15,7 @@ Getting Setup (for noobs)
 3. If you don't have ffmpeg already working with pyriscope, download ffmpeg and, for Windows, add it to path as shown here: http://stackoverflow.com/questions/23400030/windows-7-add-path or place :code:`ffmpeg.exe` in the same directory as :code:`pyriscope.exe` (typically the Scripts folder in your Python install directory).
 4. Open a command prompt and type :code:`periapi`.
 5. You will need to find the periscope consumer key and consumer secret and input it when you first run the program. Don't ask here for that information. Pastebin contains useful tips.
+6. Default download directory is :code:`~\Downloads` (on Windows, this is :code:`C:\Users\<your name>\Downloads`)
 
 Requirements
 ------------
