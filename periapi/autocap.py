@@ -6,9 +6,10 @@ Periscope API for the masses
 import os
 import sys
 import time
-from pyriscope.processor import process as pyriscope_dl
-
 from multiprocessing import Pool
+
+import pyriscope.processor
+
 from dateutil.parser import parse as dt_parse
 
 BROADCAST_URL_FORMAT = 'https://www.periscope.tv/w/'
@@ -17,6 +18,10 @@ DEFAULT_DOWNLOAD_DIRECTORY = os.path.join(os.getcwd(), 'downloads')
 CORES_TO_USE = -(-os.cpu_count() // 2)
 MAX_REDOWNLOAD_ATTEMPTS = 3
 EXTENSIONS = ['.mp4', '.ts']
+
+pyriscope.processor.FFMPEG_LIVE = pyriscope.processor.FFMPEG_LIVE.replace('error', 'quiet')
+pyriscope.processor.FFMPEG_ROT = pyriscope.processor.FFMPEG_ROT.replace('error', 'quiet')
+pyriscope.processor.FFMPEG_NOROT = pyriscope.processor.FFMPEG_NOROT.replace('error', 'quiet')
 
 
 def replay_downloaded(bc_name):
@@ -57,20 +62,35 @@ def start_download(bc_id, bc_name):
     """Starts download using pyriscope"""
     os.chdir(DEFAULT_DOWNLOAD_DIRECTORY)
     fname = cleansefilename(bc_name)
-
-    if replay_downloaded(bc_name):
-        return bc_id
-
-    rename_live(bc_name)
-
-    url = BROADCAST_URL_FORMAT + bc_id
     try:
-        pyriscope_dl([url, '-C', '-n', fname])
+        if replay_downloaded(bc_name):
+            return bc_id
+
+        if "REPLAY" in bc_name:
+            time.sleep(5)
+        rename_live(bc_name)
+
+        url = BROADCAST_URL_FORMAT + bc_id
+
+        pyriscope.processor.process([url, '-C', '-n', fname])
+
+        for bcdescriptor in ['', '.live']:
+            for extension in EXTENSIONS:
+                filename = fname + bcdescriptor + extension
+                if os.path.exists(os.path.join(DEFAULT_DOWNLOAD_DIRECTORY, filename)):
+                    return bc_id
+        raise Exception(bc_id)
+
     except SystemExit as _:
         if _.code == 0:
             return bc_id
         else:
             raise Exception(bc_id)
+
+    except BaseException as exceptiondetails:
+        with open('{} error.log'.format(fname), mode='a') as errorlog:
+            errorlog.write(exceptiondetails)
+        raise Exception(bc_id)
 
 
 def current_datetimestring():
@@ -81,6 +101,7 @@ def current_datetimestring():
 def mute():
     """Write output from our youtube-dl processes to devnull"""
     sys.stdout = open(os.devnull, "w")
+    sys.stderr = open(os.devnull, "w")
 
 
 def parse_bc_info(broadcast):
