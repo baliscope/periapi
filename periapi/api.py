@@ -17,9 +17,9 @@ def bool_response(fun):
         """Actual wrapper"""
         resp = fun(*args, **kw)
         success = resp.get("success")
-        if success == "true" or success == True:
+        if success == "true" or success:
             return True
-        if success == "false" or success == False:
+        if success == "false" or success:
             return False
         raise ValueError("Invalid boolean success response")
 
@@ -38,6 +38,12 @@ class PeriAPI:
         res = self.session.post_peri(url, json=payload or {})
         logging.debug("%s: params:%r result=%r", url, payload, res)
         return res
+
+    def _get_unauth(self, url, payload=None):
+        """Get request to API (Periscope uses query strings here, not json)"""
+        res = self.session.get(url, params=payload)
+        logging.debug("%s: params:%r result=%r", url, payload, res)
+        return res.json()
 
     @property
     def pubid(self):
@@ -84,6 +90,13 @@ class PeriAPI:
             'https://api.periscope.tv/api/v2/following',
             {"user_id": self.pubid}
             )
+
+    def get_broadcast_info(self, broadcast_id):
+        """Returns broadcast dictionary"""
+        return self._get_unauth(
+            'https://api.periscope.tv/api/v2/getBroadcastPublic',
+            {'broadcast_id': broadcast_id}
+            ).get('broadcast')
 
     def find_user_id(self, username):
         """Most API calls require the user id, not name, so find it"""

@@ -14,9 +14,9 @@ from dateutil.parser import parse as dt_parse
 
 BROADCAST_URL_FORMAT = 'https://www.periscope.tv/w/'
 DEFAULT_NOTIFICATION_INTERVAL = 15
-DEFAULT_DOWNLOAD_DIRECTORY = os.path.join(os.getcwd(), 'downloads')
+DOWNLOAD_DIRECTORY = os.path.join(os.getcwd(), 'downloads')
 CORES_TO_USE = -(-os.cpu_count() // 2)
-MAX_REDOWNLOAD_ATTEMPTS = 3
+MAX_DOWNLOAD_ATTEMPTS = 3
 EXTENSIONS = ['.mp4', '.ts']
 
 pyriscope.processor.FFMPEG_LIVE = pyriscope.processor.FFMPEG_LIVE.replace('error', 'quiet')
@@ -24,27 +24,22 @@ pyriscope.processor.FFMPEG_ROT = pyriscope.processor.FFMPEG_ROT.replace('error',
 pyriscope.processor.FFMPEG_NOROT = pyriscope.processor.FFMPEG_NOROT.replace('error', 'quiet')
 
 
-def replay_downloaded(bc_name):
+def replay_downloaded(broadcast):
     """Boolean indicating if given replay has been downloaded already"""
     for extension in EXTENSIONS:
-        fname = cleansefilename(bc_name)
 
-        if os.path.exists(os.path.join(DEFAULT_DOWNLOAD_DIRECTORY, fname + extension)):
-            return True
-        fname += " REPLAY"
-        if os.path.exists(os.path.join(DEFAULT_DOWNLOAD_DIRECTORY, fname + extension)):
+        if os.path.exists(os.path.join(DOWNLOAD_DIRECTORY, broadcast.filename + extension)):
             return True
 
     return False
 
 
-def rename_live(bc_name):
+def rename_live(fname):
     """Checks if there are any live broadcasts recorded with that name already and renames.
     Useful if a live drops out and then restarts - without this the previous
     recording would be overwritten"""
-    fname = cleansefilename(bc_name)
     for extension in EXTENSIONS:
-        filename_start = os.path.join(DEFAULT_DOWNLOAD_DIRECTORY, fname + '.live')
+        filename_start = os.path.join(DOWNLOAD_DIRECTORY, fname + '.live')
         if os.path.exists(filename_start + extension):
             _ = 1
             while os.path.exists(filename_start + str(_) + extension):
@@ -53,44 +48,52 @@ def rename_live(bc_name):
             return None
 
 
-def cleansefilename(bc_name):
-    """Makes broadcast names usable as filenames"""
-    return bc_name.replace('/', '-').replace(':', '-')
-
-
-def start_download(bc_id, bc_name):
+def start_download(broadcast):
     """Starts download using pyriscope"""
-    os.chdir(DEFAULT_DOWNLOAD_DIRECTORY)
-    fname = cleansefilename(bc_name)
     try:
-        if replay_downloaded(bc_name):
-            return bc_id
+        os.chdir(DOWNLOAD_DIRECTORY)
 
-        if "REPLAY" in bc_name:
-            time.sleep(5)
-        rename_live(bc_name)
+        if broadcast.isreplay and replay_downloaded(broadcast):
+            return broadcast
 
-        url = BROADCAST_URL_FORMAT + bc_id
+        if broadcast.islive:
+            rename_live(broadcast.filename)
 
-        pyriscope.processor.process([url, '-C', '-n', fname])
+        url = BROADCAST_URL_FORMAT + broadcast.id
 
-        for bcdescriptor in ['', '.live']:
-            for extension in EXTENSIONS:
-                filename = fname + bcdescriptor + extension
-                if os.path.exists(os.path.join(DEFAULT_DOWNLOAD_DIRECTORY, filename)):
-                    return bc_id
-        raise BaseException(bc_id)
+        pyriscope.processor.process([url, '-C', '-n', broadcast.filename])
+
+        if download_successful(broadcast):
+            return broadcast
+
+        raise Exception(broadcast.id)
 
     except SystemExit as _:
-        if _.code == 0:
-            return bc_id
+        if not _.code or _.code == 0:
+            return broadcast
         else:
-            raise SystemExit(bc_id)
+            raise SystemExit(broadcast.id)
 
-    except BaseException as exceptiondetails:
-        with open('{} error.log'.format(fname), mode='a') as errorlog:
-            errorlog.write(exceptiondetails)
-        raise BaseException(bc_id)
+    except Exception:
+        raise BaseException(broadcast.id)
+
+
+def download_successful(broadcast):
+    """Checks if download was successful"""
+    checks = 3
+    waittime = 5
+
+    _ = 0
+    while _ < checks:
+        for bcdescriptor in ['', '.live']:
+            for extension in EXTENSIONS:
+                filename = broadcast.filename + bcdescriptor + extension
+                if os.path.exists(os.path.join(DOWNLOAD_DIRECTORY, filename)):
+                    return True
+        time.sleep(waittime)
+        _ += 1
+
+    return False
 
 
 def current_datetimestring():
@@ -103,19 +106,98 @@ def mute():
     sys.stdout = open(os.devnull, "w")
 
 
-def parse_bc_info(broadcast):
-    """Get tuple of broadcast information"""
-    bc_id = broadcast['id']
-    username = broadcast['username']
-    bc_dtstring = broadcast['start']
-    bc_datetime = dt_parse(bc_dtstring)
+class Broadcast:
+    """Broadcast object"""
 
-    bc_date = bc_datetime.strftime('%m/%d/%Y')
-    bc_time = bc_datetime.strftime('%H:%M:%S')
+    def __init__(self, api, broadcast):
+        self.api = api
+        self.info = broadcast
 
-    bc_name = ' '.join([username, bc_date, bc_time, bc_id])
+    def update_info(self):
+        """Updates broadcast object with latest info from periscope"""
+        updates = self.api.get_broadcast_info(self.id)
+        if not updates:
+            self.available = False
+            self.state = "DELETED"
+        else:
+            self.info = updates
 
-    return bc_id, bc_name, bc_dtstring
+    @property
+    def id(self):
+        """Returns broadcast id"""
+        return self.info['id']
+
+    @property
+    def username(self):
+        """Returns broadcaster username"""
+        return self.info['username']
+
+    @property
+    def start(self):
+        """Returns ATOM string indicating when broadcast started"""
+        return self.info['start']
+
+    @property
+    def start_dt(self):
+        """Datetime object version of broadcast start time"""
+        return dt_parse(self.info['start'])
+
+    @property
+    def startdate(self):
+        """Human-readable date string of when broadcast started"""
+        return self.start_dt.strftime('%m/%d/%Y')
+
+    @property
+    def starttime(self):
+        """Human-readable time string of when broadcast started"""
+        return self.start_dt.strftime('%H:%M:%S')
+
+    @property
+    def title(self):
+        """Title of broadcast (in the context of the downloader)"""
+        if not self.islive and self.available:
+            return ' '.join([self.username, self.startdate, self.starttime, self.id, 'REPLAY'])
+        return ' '.join([self.username, self.startdate, self.starttime, self.id])
+
+    @property
+    def filename(self):
+        """Get title string adapted for use as filename"""
+        return self.title.replace('/', '-').replace(':', '-')
+
+    @property
+    def islive(self):
+        """Check if broadcast is running or not"""
+        if self.info['state'] == 'RUNNING':
+            return True
+        return False
+
+    @property
+    def isreplay(self):
+        """Check if broadcast is replay or not"""
+        if not self.islive and self.available:
+            return True
+        return False
+
+    @property
+    def state(self):
+        """Get broadcast state string"""
+        return self.info['state']
+
+    @state.setter
+    def state(self, new_state):
+        """Set broadcast state string (useful if broadcast is deleted since peri deletes entire
+        broadcast object)"""
+        self.info['state'] = new_state
+
+    @property
+    def available(self):
+        """Check if broadcast is available for replay"""
+        return self.info['available_for_replay']
+
+    @available.setter
+    def available(self, boolean):
+        """Set broadcast availability (if broadcast is deleted - set to False)"""
+        self.info['available_for_replay'] = boolean
 
 
 class AutoCap:
@@ -136,8 +218,8 @@ class AutoCap:
 
         while self.keep_running:
 
-            if not os.path.exists(DEFAULT_DOWNLOAD_DIRECTORY):
-                os.makedirs(DEFAULT_DOWNLOAD_DIRECTORY)
+            if not os.path.exists(DOWNLOAD_DIRECTORY):
+                os.makedirs(DOWNLOAD_DIRECTORY)
 
             new_broadcasts = self.listener.check_for_new()
 
@@ -149,6 +231,8 @@ class AutoCap:
 
             time.sleep(self.interval)
 
+            self.downloadmgr.redownload_failed()
+
         self.downloadmgr.pool.close()
         self.downloadmgr.pool.join()
 
@@ -159,14 +243,14 @@ class AutoCap:
 
     def _send_to_downloader(self, new_bcs):
         """Unpack results from listener and start download. Set latest dl time."""
-        for bc_id, bc_name, bc_dtstring in new_bcs:
-            self.downloadmgr.start_dl(bc_id, bc_name)
+        for broadcast in new_bcs:
+            self.downloadmgr.start_dl(broadcast)
 
             if self.listener.last_new_bc:
-                if dt_parse(bc_dtstring) > dt_parse(self.listener.last_new_bc):
-                    self.listener.last_new_bc = bc_dtstring
+                if broadcast.start_dt > dt_parse(self.listener.last_new_bc):
+                    self.listener.last_new_bc = broadcast.start
             else:
-                self.listener.last_new_bc = bc_dtstring
+                self.listener.last_new_bc = broadcast.start
 
     @property
     def _status(self):
@@ -214,27 +298,29 @@ class Listener:
         if len(current_notifications) == 0:
             return None
 
-        new_broadcast_ids = self.process_notifications(current_notifications)
+        new_broadcasts = self.process_notifications(current_notifications)
 
-        if len(new_broadcast_ids) == 0:
+        if len(new_broadcasts) == 0:
             return None
 
-        return new_broadcast_ids
+        return new_broadcasts
 
     def process_notifications(self, notifications):
         """Process list of broadcasts obtained from notifications API endpoint."""
-        new_broadcast_ids = list()
+        new_broadcasts = list()
         new = self.new_follows()
 
         for i in notifications:
 
-            if self.check_if_wanted(i, new):
-                new_broadcast_ids.append(parse_bc_info(i))
+            broadcast = Broadcast(self.api, i)
+
+            if self.check_if_wanted(broadcast, new):
+                new_broadcasts.append(broadcast)
 
         if self.check_backlog:
             self.check_backlog = False
 
-        return new_broadcast_ids
+        return new_broadcasts
 
     def check_if_wanted(self, broadcast, new):
         """Check if broadcast in notifications string is desired for download"""
@@ -242,11 +328,11 @@ class Listener:
             return True
 
         elif new:
-            if broadcast['username'] in new:
+            if broadcast.username in new:
                 return True
 
         elif self.last_new_bc:
-            if dt_parse(broadcast['start']) > dt_parse(self.last_new_bc):
+            if broadcast.start_dt > dt_parse(self.last_new_bc):
                 return True
 
         return None
@@ -287,21 +373,28 @@ class DownloadManager:
 
         self.pool = Pool(CORES_TO_USE, initializer=mute, maxtasksperchild=1)
 
-    def start_dl(self, bc_id, bc_name):
+    def start_dl(self, broadcast):
         """Adds a download task to the multiprocessing pool"""
 
-        self.pool.apply_async(start_download, (bc_id, bc_name), callback=self._dl_complete,
+        self.pool.apply_async(start_download, (broadcast,), callback=self._dl_complete,
                               error_callback=self._dl_failed)
 
-        self.active_downloads[bc_id] = bc_name
+        self.active_downloads[broadcast.id] = broadcast
 
-        print("[{0}] Adding Download: {1}".format(current_datetimestring(), bc_name))
+        print("[{0}] Adding Download: {1}".format(current_datetimestring(), broadcast.title))
 
-    def check_replay(self, bc_id, bc_name):
-        """Starts download of broadcast replay if not already gotten"""
-        if not replay_downloaded(bc_name):
-            print("[{0}] Downloading replay of: {1}".format(current_datetimestring(), bc_name))
-            self.start_dl(bc_id, bc_name + " REPLAY")
+    def get_replay(self, broadcast):
+        """Starts download of broadcast replay if not already gotten; or, continues live download"""
+        if broadcast.islive:
+            broadcast.update_info()
+            if broadcast.available and not broadcast.islive:
+                print("[{0}] Downloading replay of: {1}".format(current_datetimestring(),
+                                                                broadcast.title))
+                self.start_dl(broadcast)
+            elif broadcast.islive:
+                print("[{0}] Continuing live download of: {1}".format(current_datetimestring(),
+                                                                      broadcast.title))
+                self.start_dl(broadcast)
 
     def redownload_failed(self):
         """Check list of retries and redownload or send to failed as appropriate"""
@@ -310,32 +403,30 @@ class DownloadManager:
 
         for bc_id in self.retries:
             attempts = self.retries[bc_id][0]
-            bc_name = self.retries[bc_id][1]
-            if attempts <= MAX_REDOWNLOAD_ATTEMPTS:
+            broadcast = self.retries[bc_id][1]
+            if attempts <= MAX_DOWNLOAD_ATTEMPTS:
 
                 "[{0}] Attempt ({1} of {2}): Redownloading {3}".format(current_datetimestring(),
                                                                        self.retries[bc_id],
-                                                                       MAX_REDOWNLOAD_ATTEMPTS,
-                                                                       bc_name)
+                                                                       MAX_DOWNLOAD_ATTEMPTS,
+                                                                       broadcast.title)
 
-                self.start_dl(bc_id, bc_name)
+                self.start_dl(broadcast)
             else:
-                print("[{0}] Failed: {1}".format(current_datetimestring(), bc_name))
-                self.failed_downloads.append((current_datetimestring(), bc_name))
+                print("[{0}] Failed: {1}".format(current_datetimestring(), broadcast.title))
+                self.failed_downloads.append((current_datetimestring(), broadcast))
                 del self.retries[bc_id]
 
-    def _dl_complete(self, bc_id):
+    def _dl_complete(self, broadcast):
         """Callback method when download completes"""
-        bc_name = self.active_downloads[bc_id]
-        print("[{0}] Completed: {1}".format(current_datetimestring(), bc_name))
-        self.completed_downloads.append((current_datetimestring(), bc_name))
-        del self.active_downloads[bc_id]
-        self.check_replay(bc_id, bc_name)
+        print("[{0}] Completed: {1}".format(current_datetimestring(), broadcast.title))
+        self.completed_downloads.append((current_datetimestring(), broadcast))
+        del self.active_downloads[broadcast.id]
+        self.get_replay(broadcast)
 
     def _dl_failed(self, bc_exception):
         """Callback method when download fails"""
         bc_id = str(bc_exception)
-        bc_name = self.active_downloads[bc_id]
-        self.retries[bc_id] = (self.retries.get(bc_id, 1) + 1, bc_name)
+        broadcast = self.active_downloads[bc_id]
+        self.retries[bc_id] = (self.retries.get(bc_id, 1) + 1, broadcast)
         del self.active_downloads[bc_id]
-
