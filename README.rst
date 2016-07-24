@@ -5,28 +5,26 @@ periscope.tv API (periapi)
 WARNING: This script is a proof of concept only. It currently stores your personal peri credential key and secret on your hard drive, unencrypted, in a text file. It is strongly suggested you make a throwaway Twitter for use with this script.
 
 NOTE: As of 7/14/2016 you will need the peri consumer secret and consumer key to use this script.
-Please create either :code:`$PWD/.peri.conf` or :code:`$HOME/.peri.conf` containing a JSON dict with :code:`consumer_secret` and :code:`consumer_key`. Don't ask the authors for the values tho! See .peri.conf.example for an example of the structure you need to have in place.
+
+Getting Setup (for noobs)
+-------------------------
+
+0. Get a Twitter account setup with Periscope. You may need to re-verify your Twitter account if it's new after running this program the first time.
+1. Install Python 3 if you don't have it.
+2. Open a command prompt (Powershell or cmd on Windows, for example) and type :code:`pip3 install https://github.com/baliscope/periapi/archive/master.zip`
+3. If you don't have ffmpeg already working with pyriscope, download ffmpeg and, for Windows, add it to path as shown here: http://stackoverflow.com/questions/23400030/windows-7-add-path or place :code:`ffmpeg.exe` in the same directory as :code:`pyriscope.exe` (typically the Scripts folder in your Python install directory).
+4. Open a command prompt and type :code:`periapi`.
+5. You will need to find the periscope consumer key and consumer secret and input it when you first run the program. Don't ask here for that information. Pastebin contains useful tips.
 
 Requirements
 ------------
 
 Python 3.4+ and whatever is in :code:`requirements.txt`
 
-Getting Setup (for noobs)
--------------------------
-
-0. Get a Twitter account setup with Periscope. (If you don't have a phone to do this with, check out OpenPeriscope.)
-1. Install Python 3 if you don't have it.
-2. This needs the following packages: pyriscope, OAuth2, requests, and path.py. To install them, open a terminal window (cmd or Powershell for Windows users). Type each of the following commands and press enter after each one: :code:`pip3 install pyriscope`; :code:`pip3 install OAuth2`; :code:`pip3 install requests`; :code:`pip3 install path.py`.
-3. If you don't have ffmpeg already working with pyriscope, download ffmpeg and, for Windows, add it to path as shown here: http://stackoverflow.com/questions/23400030/windows-7-add-path or place :code:`ffmpeg.exe` in the same directory as :code:`pyriscope.exe` (typically the Scripts folder in your Python install directory).
-4. Clone this repo (download this repository as a .zip) and unzip it somewhere.
-5. Go to the :code:`.peri.conf.example` file, delete the :code:`.example` from the end of the filename, open it in a text editor, and replace the gibberish strings with the Periscope Consumer Key and Consumer Secret. If you don't have this info, best of luck, but we can't help.
-6. Run :code:`example-cli.py`
-
 Usage
 -----
 
-1. Run :code:`example-cli.py` to execute a very simple command line interface that allows one to follow/unfollow/view followers and turn on autocapping of their broadcasts.
+1. Run :code:`periapi` in a console to execute a very simple command line interface that allows one to follow/unfollow/view followers and turn on autocapping of their broadcasts.
 2. On first run, you will need to execute a PIN-based authentication with Twitter. The script will give you a twitter.com url to visit and once you are logged in it will display a PIN. Enter that number into the python console and press enter. 
 3. Your credentials will be saved (see the WARNING at the beginning of this readme) so step 2 will not need to be repeated unless your credentials get revoked.
 4. You will now be logged into the periscope API and can do a few fun things. More to come
@@ -49,9 +47,4 @@ TODO
 
 1. Test coverage
 2. Add more API calls
-4. UI????
-
-Develop
--------
-
-Just do the usual :code:`python setup.py develop` routine, and then test with the :code:`peritest` command that installs.
+3. UI????

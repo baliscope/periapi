@@ -15,8 +15,8 @@ You should have received a copy of the GNU General Public License
 along with Volapi.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
-from setuptools import setup
 import re
+from setuptools import setup
 
 
 def find_version(filename):
@@ -41,7 +41,7 @@ setup(
     author='baliscope',
     author_email='bal@tutanota.com',
     packages=['periapi'],
-    entry_points={"console_scripts": ["peritest = periapi.__main__:run"]},
+    entry_points={"console_scripts": ["periapi = periapi.__main__:run"]},
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Intended Audience :: Developers',

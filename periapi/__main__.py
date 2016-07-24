@@ -5,55 +5,80 @@ Periscope API for the masses
 # pylint: disable=broad-except
 
 import sys
-import logging
-
-from argparse import ArgumentParser
 
 from . import PeriAPI
 from . import AutoCap
-from . import __version__
 
 
 def run():
     """PeriAPI runner"""
-    args = ArgumentParser()
-    args.add_argument("--verbose", "-v", action="store_true")
-    args.add_argument("follow", nargs="*", help="Follow a user")
-
-    args = args.parse_args()
-
-    logging.basicConfig(
-        level=logging.DEBUG
-        if args.verbose else
-        logging.INFO
-    )
-    logging.getLogger("requests").setLevel(
-        level=logging.DEBUG
-        if args.verbose else
-        logging.WARN
-    )
-
-    logging.info("Running PeriAPI v%s", __version__)
-    papi = PeriAPI()
-    logging.info("You are %s [%s / %s]",
-                 papi.session.name, papi.session.uid, papi.pubid)
-    for user in sys.argv[1:]:
-        try:
-            uid = papi.find_user_id(user)
-            logging.info("Follow %s (%s): %r", user, uid, papi.follow(uid))
-        except Exception:
-            logging.exception("Failed to lookup user: %s", user)
-
-    logging.info("following: %r",
-                 {u["display_name"]: u["username"] for u in papi.following})
-    logging.info("and their broadcasts: %r",
-                 {(b["id"], b["state"]): b["username"] for b in papi.notifications})
-
-    cap = AutoCap(api=papi)
-    logging.info("%s new broadcasts found in notification stream.",
-                 len(cap.listener.check_for_new()))
-
+    BadCLI()
     sys.exit(0)
+
+
+def enditall():
+    """Terminate program"""
+    sys.exit(0)
+
+
+class BadCLI:
+    """Start up a rudimentary CLI"""
+
+    def __init__(self):
+        print("Signing in...")
+        self.api = PeriAPI()
+
+        while True:
+            try:
+                print("\nPlease select from one of the following options:\n")
+                print("\t1 - Show followed users")
+                print("\t2 - Follow a user")
+                print("\t3 - Unfollow a user")
+                print("\t4 - Start Autocapper")
+                print("\t0 - Exit this piece of shit software\n")
+                choice = input("Please select an option (0-4): ")
+                if choice == '0':
+                    enditall()
+                elif choice == '1':
+                    self.show_followed_users()
+                elif choice == '2':
+                    self.follow_user(input("Enter their username: "))
+                elif choice == '3':
+                    self.unfollow_user(input("Enter their username: "))
+                elif choice == '4':
+                    self.start_autocapper()
+                else:
+                    print("Invalid selection. Please try again.")
+            except ValueError as e:
+                print(e)
+
+    def show_followed_users(self):
+        """Shows who you're following"""
+        for i in self.api.following:
+            print(i['username'])
+
+    def follow_user(self, username):
+        """Tries to find and follow the entered username"""
+        try:
+            user_id = self.api.find_user_id(username)
+        except ValueError:
+            print("User could not be found.")
+            return None
+        self.api.follow(user_id)
+
+    def unfollow_user(self, username):
+        """Tries to find and unfollow the entered username"""
+        try:
+            user_id = self.api.find_user_id(username)
+        except ValueError:
+            print("User could not be found.")
+            return None
+        self.api.unfollow(user_id)
+
+    def start_autocapper(self):
+        """Start autocapper running"""
+        cap = AutoCap(self.api)
+        cap.start()
 
 
 if __name__ == "__main__":

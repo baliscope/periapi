@@ -89,8 +89,8 @@ class LoginSession(requests.Session):
         cons_key = config.get("consumer_key")
         cons_sec = config.get("consumer_secret")
         if not cons_key or not cons_sec:
-            raise ValueError(".peri.conf does not provide consumer_key or "
-                             "consumer_secret")
+            cons_key = input("Please input the Periscope consumer key: ")
+            cons_sec = input("please input the Periscope consumer secret: ")
 
         # Set up our OAuth request headers, sign the request, etc.
         consumer = oauth.Consumer(cons_key, cons_sec)
@@ -101,7 +101,8 @@ class LoginSession(requests.Session):
         resp, content = client.request(RTOKEN_URL, 'GET')
         if resp['status'] != '200':
             raise IOError(
-                'Could not initialize authentication process with Twitter')
+                'Could not initialize authentication process with Twitter. Check'
+                ' consumer key/consumer secret validity and try again.')
 
         # Parse the response from Twitter's API and use it to load the
         # authorization page
