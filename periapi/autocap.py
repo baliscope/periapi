@@ -21,10 +21,15 @@ EXTENSIONS = ['.mp4', '.ts']
 
 def replay_downloaded(bc_name):
     """Boolean indicating if given replay has been downloaded already"""
-    fname = cleansefilename(bc_name)
     for extension in EXTENSIONS:
+        fname = cleansefilename(bc_name)
+
         if os.path.exists(os.path.join(DEFAULT_DOWNLOAD_DIRECTORY, fname + extension)):
             return True
+        fname += " REPLAY"
+        if os.path.exists(os.path.join(DEFAULT_DOWNLOAD_DIRECTORY, fname + extension)):
+            return True
+
     return False
 
 
@@ -37,9 +42,9 @@ def rename_live(bc_name):
         filename_start = os.path.join(DEFAULT_DOWNLOAD_DIRECTORY, fname + '.live')
         if os.path.exists(filename_start + extension):
             _ = 1
-            while os.path.exists(filename_start + _ + extension):
+            while os.path.exists(filename_start + str(_) + extension):
                 _ += 1
-            os.rename(filename_start + extension, filename_start + _ + extension)
+            os.rename(filename_start + extension, filename_start + str(_) + extension)
             return None
 
 
@@ -282,16 +287,16 @@ class DownloadManager:
         """Callback method when download completes"""
         bc_name = self.active_downloads[bc_id]
         print("[{0}] Completed: {1}".format(current_datetimestring(), bc_name))
-        self.completed_downloads.append(bc_name)
+        self.completed_downloads.append((current_datetimestring(), bc_name))
         del self.active_downloads[bc_id]
         self.check_replay(bc_id, bc_name)
 
     def _dl_failed(self, bc_exception):
         """Callback method when download fails"""
-        bc_id = bc_exception.message
+        bc_id = str(bc_exception)
         bc_name = self.active_downloads[bc_id]
         print("[{0}] Failed: {1}".format(current_datetimestring(), bc_name))
-        self.failed_downloads.append(bc_name)
+        self.failed_downloads.append((current_datetimestring(), bc_name))
         del self.active_downloads[bc_id]
         self.retries[bc_id] = self.retries.get(bc_id, 0) + 1
         if self.retries[bc_id] <= MAX_REDOWNLOAD_ATTEMPTS:
