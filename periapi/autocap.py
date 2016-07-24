@@ -6,7 +6,7 @@ Periscope API for the masses
 import os
 import sys
 import time
-from multiprocessing import Pool
+from multiprocessing import Pool, Semaphore
 
 import pyriscope.processor
 
@@ -50,32 +50,33 @@ def rename_live(fname):
 
 def start_download(broadcast):
     """Starts download using pyriscope"""
-    try:
-        os.chdir(DOWNLOAD_DIRECTORY)
+    with semaphore:
+        try:
+            os.chdir(DOWNLOAD_DIRECTORY)
 
-        if broadcast.isreplay and replay_downloaded(broadcast):
-            return broadcast
+            if broadcast.isreplay and replay_downloaded(broadcast):
+                return broadcast
 
-        if broadcast.islive:
-            rename_live(broadcast.filename)
+            if broadcast.islive:
+                rename_live(broadcast.filename)
 
-        url = BROADCAST_URL_FORMAT + broadcast.id
+            url = BROADCAST_URL_FORMAT + broadcast.id
 
-        pyriscope.processor.process([url, '-C', '-n', broadcast.filename])
+            pyriscope.processor.process([url, '-C', '-n', broadcast.filename])
 
-        if download_successful(broadcast):
-            return broadcast
+            if download_successful(broadcast):
+                return broadcast
 
-        raise Exception(broadcast.id)
+            raise Exception(broadcast.id)
 
-    except SystemExit as _:
-        if not _.code or _.code == 0:
-            return broadcast
-        else:
-            raise SystemExit(broadcast.id)
+        except SystemExit as _:
+            if not _.code or _.code == 0:
+                return broadcast
+            else:
+                raise SystemExit(broadcast.id)
 
-    except Exception:
-        raise BaseException(broadcast.id)
+        except Exception:
+            raise BaseException(broadcast.id)
 
 
 def download_successful(broadcast):
@@ -101,8 +102,10 @@ def current_datetimestring():
     return " ".join([time.strftime('%x'), time.strftime('%X')])
 
 
-def mute():
+def initialize_download(semaphore_):
     """Write output from our youtube-dl processes to devnull"""
+    global semaphore
+    semaphore = semaphore_
     sys.stdout = open(os.devnull, "w")
 
 
@@ -365,19 +368,23 @@ class DownloadManager:
         self.api = api
 
         self.config = self.api.session.config
-
-        self.active_downloads = dict()
         self.retries = dict()
-        self.completed_downloads = list()
-        self.failed_downloads = list()
 
-        self.pool = Pool(CORES_TO_USE, initializer=mute, maxtasksperchild=1)
+        self.download_progress = dict()
+
+        self.download_progress['active'] = dict()
+        self.download_progress['completed'] = list()
+        self.download_progress['failed'] = list()
+
+        semaphore_ = Semaphore(CORES_TO_USE)
+        self.pool = Pool(CORES_TO_USE, initializer=initialize_download, initargs=(semaphore_,),
+                         maxtasksperchild=1)
 
     def start_dl(self, broadcast):
         """Adds a download task to the multiprocessing pool"""
 
-        self.pool.apply_async(start_download, (broadcast,), callback=self._dl_complete,
-                              error_callback=self._dl_failed)
+        self.pool.apply_async(start_download, (broadcast,),
+                              callback=self._dl_complete, error_callback=self._dl_failed)
 
         self.active_downloads[broadcast.id] = broadcast
 
@@ -430,3 +437,18 @@ class DownloadManager:
         broadcast = self.active_downloads[bc_id]
         self.retries[bc_id] = (self.retries.get(bc_id, 1) + 1, broadcast)
         del self.active_downloads[bc_id]
+
+    @property
+    def active_downloads(self):
+        """Return dictionary of active downloads"""
+        return self.download_progress['active']
+
+    @property
+    def completed_downloads(self):
+        """Return list of completed downloads"""
+        return self.download_progress['completed']
+
+    @property
+    def failed_downloads(self):
+        """Return list of failed downloads"""
+        return self.download_progress['failed']
