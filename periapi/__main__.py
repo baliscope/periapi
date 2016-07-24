@@ -35,7 +35,7 @@ class BadCLI:
                 print("\t2 - Follow a user")
                 print("\t3 - Unfollow a user")
                 print("\t4 - Start Autocapper")
-                print("\t0 - Exit this piece of shit software\n")
+                print("\t0 - Exit\n")
                 choice = input("Please select an option (0-4): ")
                 if choice == '0':
                     enditall()
@@ -79,7 +79,14 @@ class BadCLI:
 
     def start_autocapper(self):
         """Start autocapper running"""
-        cap = AutoCap(self.api)
+
+        disable_check = input("Check all prior broadcasts? (y/n): ")
+        if disable_check == "y":
+            check_backlog = True
+        else:
+            check_backlog = False
+
+        cap = AutoCap(self.api, check_backlog=check_backlog)
         cap.start()
 
 

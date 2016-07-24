@@ -14,8 +14,9 @@ from dateutil.parser import parse as dt_parse
 
 BROADCAST_URL_FORMAT = 'https://www.periscope.tv/w/'
 DEFAULT_NOTIFICATION_INTERVAL = 15
-DOWNLOAD_DIRECTORY = os.path.join(os.getcwd(), 'downloads')
+DOWNLOAD_DIRECTORY = os.path.join(os.path.expanduser('~'), 'downloads')
 CORES_TO_USE = -(-os.cpu_count() // 2)
+MAX_SIMULTANEOUS_DOWNLOADS = CORES_TO_USE * 2
 MAX_DOWNLOAD_ATTEMPTS = 3
 EXTENSIONS = ['.mp4', '.ts']
 
@@ -207,14 +208,14 @@ class Broadcast:
 class AutoCap:
     """Class to check notifications stream and start capping new broadcasts"""
 
-    def __init__(self, api, print_status=True):
+    def __init__(self, api, print_status=True, check_backlog=True):
         self.print_status = print_status
         self.keep_running = True
 
         self.api = api
         self.config = self.api.session.config
 
-        self.listener = Listener(api=self.api, check_backlog=True)
+        self.listener = Listener(api=self.api, check_backlog=check_backlog)
         self.downloadmgr = DownloadManager(api=self.api)
 
     def start(self):
