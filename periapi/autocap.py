@@ -79,18 +79,18 @@ def start_download(bc_id, bc_name):
                 filename = fname + bcdescriptor + extension
                 if os.path.exists(os.path.join(DEFAULT_DOWNLOAD_DIRECTORY, filename)):
                     return bc_id
-        raise Exception(bc_id)
+        raise BaseException(bc_id)
 
     except SystemExit as _:
         if _.code == 0:
             return bc_id
         else:
-            raise Exception(bc_id)
+            raise SystemExit(bc_id)
 
     except BaseException as exceptiondetails:
         with open('{} error.log'.format(fname), mode='a') as errorlog:
             errorlog.write(exceptiondetails)
-        raise Exception(bc_id)
+        raise BaseException(bc_id)
 
 
 def current_datetimestring():
@@ -101,7 +101,6 @@ def current_datetimestring():
 def mute():
     """Write output from our youtube-dl processes to devnull"""
     sys.stdout = open(os.devnull, "w")
-    sys.stderr = open(os.devnull, "w")
 
 
 def parse_bc_info(broadcast):
@@ -304,6 +303,27 @@ class DownloadManager:
             print("[{0}] Downloading replay of: {1}".format(current_datetimestring(), bc_name))
             self.start_dl(bc_id, bc_name + " REPLAY")
 
+    def redownload_failed(self):
+        """Check list of retries and redownload or send to failed as appropriate"""
+        if len(self.retries) == 0:
+            return None
+
+        for bc_id in self.retries:
+            attempts = self.retries[bc_id][0]
+            bc_name = self.retries[bc_id][1]
+            if attempts <= MAX_REDOWNLOAD_ATTEMPTS:
+
+                "[{0}] Attempt ({1} of {2}): Redownloading {3}".format(current_datetimestring(),
+                                                                       self.retries[bc_id],
+                                                                       MAX_REDOWNLOAD_ATTEMPTS,
+                                                                       bc_name)
+
+                self.start_dl(bc_id, bc_name)
+            else:
+                print("[{0}] Failed: {1}".format(current_datetimestring(), bc_name))
+                self.failed_downloads.append((current_datetimestring(), bc_name))
+                del self.retries[bc_id]
+
     def _dl_complete(self, bc_id):
         """Callback method when download completes"""
         bc_name = self.active_downloads[bc_id]
@@ -316,14 +336,6 @@ class DownloadManager:
         """Callback method when download fails"""
         bc_id = str(bc_exception)
         bc_name = self.active_downloads[bc_id]
-        print("[{0}] Failed: {1}".format(current_datetimestring(), bc_name))
-        self.failed_downloads.append((current_datetimestring(), bc_name))
+        self.retries[bc_id] = (self.retries.get(bc_id, 1) + 1, bc_name)
         del self.active_downloads[bc_id]
-        self.retries[bc_id] = self.retries.get(bc_id, 0) + 1
-        if self.retries[bc_id] <= MAX_REDOWNLOAD_ATTEMPTS:
 
-            "[{0}] Attempt ({1} of {2}): Redownloading {3}".format(current_datetimestring(),
-                                                                   self.retries[bc_id],
-                                                                   MAX_REDOWNLOAD_ATTEMPTS, bc_name)
-
-            self.start_dl(bc_id, bc_name)
