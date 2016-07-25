@@ -51,7 +51,6 @@ def rename_live(broadcast):
 
 def start_download(broadcast):
     """Starts download using pyriscope"""
-
     try:
         os.chdir(broadcast.download_directory)
 
@@ -66,18 +65,18 @@ def start_download(broadcast):
         pyriscope.processor.process([url, '-C', '-n', broadcast.filename])
 
         if download_successful(broadcast):
-            return broadcast
-
-        raise Exception(broadcast.id)
+            return True, broadcast.id
+        else:
+            return False, broadcast.id
 
     except SystemExit as _:
         if not _.code or _.code == 0:
-            return broadcast
+            return True, broadcast.id
         else:
-            raise SystemExit(broadcast.id)
+            return False, broadcast.id
 
-    except Exception:
-        raise BaseException(broadcast.id)
+    except BaseException:
+        return False, broadcast.id
 
 
 def download_successful(broadcast):
@@ -120,11 +119,13 @@ class Broadcast:
     def update_info(self):
         """Updates broadcast object with latest info from periscope"""
         updates = self.api.get_broadcast_info(self.id)
+        dl_directory = self.download_directory
         if not updates:
             self.available = False
             self.state = "DELETED"
         else:
             self.info = updates
+            self.info['download_directory'] = dl_directory
 
     @property
     def id(self):
@@ -391,8 +392,7 @@ class DownloadManager:
     def start_dl(self, broadcast):
         """Adds a download task to the multiprocessing pool"""
 
-        self.pool.apply_async(start_download, (broadcast,),
-                              callback=self._dl_complete, error_callback=self._dl_failed)
+        self.pool.apply_async(start_download, (broadcast,), callback=self._callback_dispatcher)
 
         self.active_downloads[broadcast.id] = broadcast
 
@@ -432,6 +432,15 @@ class DownloadManager:
                 self.failed_downloads.append((current_datetimestring(), broadcast))
                 del self.retries[bc_id]
 
+    def _callback_dispatcher(self, results):
+        """Unpacks callback argument and passes to appropriate cleanup method"""
+        broadcast = self.active_downloads[results[1]]
+        download_ok = results[0]
+        if download_ok:
+            self._dl_complete(broadcast)
+        else:
+            self._dl_failed(broadcast)
+
     def _dl_complete(self, broadcast):
         """Callback method when download completes"""
         print("[{0}] Completed: {1}".format(current_datetimestring(), broadcast.title))
@@ -439,12 +448,10 @@ class DownloadManager:
         del self.active_downloads[broadcast.id]
         self.get_replay(broadcast)
 
-    def _dl_failed(self, bc_exception):
+    def _dl_failed(self, broadcast):
         """Callback method when download fails"""
-        bc_id = str(bc_exception)
-        broadcast = self.active_downloads[bc_id]
-        self.retries[bc_id] = (self.retries.get(bc_id, 1) + 1, broadcast)
-        del self.active_downloads[bc_id]
+        self.retries[broadcast.id] = (self.retries.get(broadcast.id, 1) + 1, broadcast)
+        del self.active_downloads[broadcast.id]
 
     @property
     def active_downloads(self):

@@ -4,6 +4,7 @@ Periscope API for the masses
 """
 
 from functools import wraps
+from json import JSONDecodeError
 
 from .login import LoginSession
 from .logging import logging
@@ -43,7 +44,10 @@ class PeriAPI:
         """Get request to API (Periscope uses query strings here, not json)"""
         res = self.session.get(url, params=payload)
         logging.debug("%s: params:%r result=%r", url, payload, res)
-        return res.json()
+        try:
+            return res.json()
+        except JSONDecodeError:
+            return dict()
 
     @property
     def pubid(self):
