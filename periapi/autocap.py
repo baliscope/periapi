@@ -55,7 +55,7 @@ def start_download(broadcast):
         os.chdir(broadcast.download_directory)
 
         if broadcast.isreplay and replay_downloaded(broadcast):
-            return broadcast
+            return True, broadcast.id
 
         if broadcast.islive:
             rename_live(broadcast)
