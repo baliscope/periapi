@@ -14,7 +14,6 @@ from dateutil.parser import parse as dt_parse
 
 BROADCAST_URL_FORMAT = 'https://www.periscope.tv/w/'
 DEFAULT_NOTIFICATION_INTERVAL = 15
-DOWNLOAD_DIRECTORY = os.path.join(os.path.expanduser('~'), 'downloads')
 CORES_TO_USE = -(-os.cpu_count() // 2)
 MAX_DOWNLOAD_ATTEMPTS = 3
 EXTENSIONS = ['.mp4', '.ts']
@@ -28,18 +27,20 @@ def replay_downloaded(broadcast):
     """Boolean indicating if given replay has been downloaded already"""
     for extension in EXTENSIONS:
 
-        if os.path.exists(os.path.join(DOWNLOAD_DIRECTORY, broadcast.filename + extension)):
+        if os.path.exists(os.path.join(broadcast.download_directory,
+                                       broadcast.filename + extension)):
             return True
 
     return False
 
 
-def rename_live(fname):
+def rename_live(broadcast):
     """Checks if there are any live broadcasts recorded with that name already and renames.
     Useful if a live drops out and then restarts - without this the previous
     recording would be overwritten"""
+    fname = broadcast.filename
     for extension in EXTENSIONS:
-        filename_start = os.path.join(DOWNLOAD_DIRECTORY, fname + '.live')
+        filename_start = os.path.join(broadcast.download_directory, fname + '.live')
         if os.path.exists(filename_start + extension):
             _ = 1
             while os.path.exists(filename_start + str(_) + extension):
@@ -52,13 +53,13 @@ def start_download(broadcast):
     """Starts download using pyriscope"""
 
     try:
-        os.chdir(DOWNLOAD_DIRECTORY)
+        os.chdir(broadcast.download_directory)
 
         if broadcast.isreplay and replay_downloaded(broadcast):
             return broadcast
 
         if broadcast.islive:
-            rename_live(broadcast.filename)
+            rename_live(broadcast)
 
         url = BROADCAST_URL_FORMAT + broadcast.id
 
@@ -89,7 +90,7 @@ def download_successful(broadcast):
         for bcdescriptor in ['', '.live']:
             for extension in EXTENSIONS:
                 filename = broadcast.filename + bcdescriptor + extension
-                if os.path.exists(os.path.join(DOWNLOAD_DIRECTORY, filename)):
+                if os.path.exists(os.path.join(broadcast.download_directory, filename)):
                     return True
         time.sleep(waittime)
         _ += 1
@@ -114,6 +115,7 @@ class Broadcast:
     def __init__(self, api, broadcast):
         self.api = api
         self.info = broadcast
+        self.info['download_directory'] = self.api.session.config.get('download_directory')
 
     def update_info(self):
         """Updates broadcast object with latest info from periscope"""
@@ -128,6 +130,11 @@ class Broadcast:
     def id(self):
         """Returns broadcast id"""
         return self.info['id']
+
+    @property
+    def download_directory(self):
+        """Returns broadcast download directory"""
+        return self.info.get('download_directory')
 
     @property
     def username(self):
@@ -212,6 +219,10 @@ class AutoCap:
         self.api = api
         self.config = self.api.session.config
 
+        if not self.config.get('download_directory'):
+            self.config['download_directory'] = os.path.join(os.path.expanduser('~'), 'downloads')
+            self.config.write()
+
         self.listener = Listener(api=self.api, check_backlog=check_backlog)
         self.downloadmgr = DownloadManager(api=self.api)
 
@@ -220,8 +231,8 @@ class AutoCap:
 
         while self.keep_running:
 
-            if not os.path.exists(DOWNLOAD_DIRECTORY):
-                os.makedirs(DOWNLOAD_DIRECTORY)
+            if not os.path.exists(self.config.get("download_directory")):
+                os.makedirs(self.config.get("download_directory"))
 
             new_broadcasts = self.listener.check_for_new()
 

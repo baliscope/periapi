@@ -4,6 +4,7 @@ Periscope API for the masses
 """
 # pylint: disable=broad-except
 
+import os
 import sys
 
 from . import PeriAPI
@@ -27,6 +28,7 @@ class BadCLI:
     def __init__(self):
         print("Signing in...")
         self.api = PeriAPI()
+        self.config = self.api.session.config
 
         while True:
             try:
@@ -35,8 +37,9 @@ class BadCLI:
                 print("\t2 - Follow a user")
                 print("\t3 - Unfollow a user")
                 print("\t4 - Start Autocapper")
+                print("\t5 - Change default download directory")
                 print("\t0 - Exit\n")
-                choice = input("Please select an option (0-4): ")
+                choice = input("Please select an option (0-5): ")
                 if choice == '0':
                     enditall()
                 elif choice == '1':
@@ -47,6 +50,8 @@ class BadCLI:
                     self.unfollow_user(input("Enter their username: "))
                 elif choice == '4':
                     self.start_autocapper()
+                elif choice == '5':
+                    self.set_download_directory()
                 else:
                     print("Invalid selection. Please try again.")
             except ValueError as e:
@@ -80,7 +85,7 @@ class BadCLI:
     def start_autocapper(self):
         """Start autocapper running"""
 
-        disable_check = input("Check all prior broadcasts? (y/n): ")
+        disable_check = input("Check all prior broadcasts? Can be very resource intensive. (y/n): ")
         if disable_check == "y":
             check_backlog = True
         else:
@@ -88,6 +93,19 @@ class BadCLI:
 
         cap = AutoCap(self.api, check_backlog=check_backlog)
         cap.start()
+
+    def set_download_directory(self):
+        if not self.config.get('download_directory'):
+            self.config['download_directory'] = os.path.join(os.path.expanduser('~'), 'downloads')
+            self.config.write()
+        print("\nCurrent download directory is: {}".format(self.config.get("download_directory")))
+        new_dir = input("New Download Directory: ")
+        if os.path.exists(new_dir):
+            self.config['download_directory'] = new_dir
+            self.config.write()
+            print("New directory set.")
+            return None
+        print("Directory does not exist or is an invalid path.")
 
 
 if __name__ == "__main__":
