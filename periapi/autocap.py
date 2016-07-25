@@ -416,21 +416,31 @@ class DownloadManager:
         if len(self.retries) == 0:
             return None
 
+        purge_list = list()
         for bc_id in self.retries:
+
             attempts = self.retries[bc_id][0]
             broadcast = self.retries[bc_id][1]
-            if attempts <= MAX_DOWNLOAD_ATTEMPTS:
+            broadcast.update_info()
 
-                "[{0}] Attempt ({1} of {2}): Redownloading {3}".format(current_datetimestring(),
-                                                                       self.retries[bc_id],
-                                                                       MAX_DOWNLOAD_ATTEMPTS,
-                                                                       broadcast.title)
+            if attempts <= MAX_DOWNLOAD_ATTEMPTS and (broadcast.islive or broadcast.available):
+
+                print("[{0}] Attempt ({1} of {2}): "
+                      "Redownloading {3}".format(current_datetimestring(),
+                                                 attempts,
+                                                 MAX_DOWNLOAD_ATTEMPTS,
+                                                 broadcast.title))
 
                 self.start_dl(broadcast)
+
             else:
+
                 print("[{0}] Failed: {1}".format(current_datetimestring(), broadcast.title))
                 self.failed_downloads.append((current_datetimestring(), broadcast))
-                del self.retries[bc_id]
+                purge_list.append(bc_id)
+
+        for bc_id in purge_list:
+            del self.retries[bc_id]
 
     def _callback_dispatcher(self, results):
         """Unpacks callback argument and passes to appropriate cleanup method"""
@@ -450,7 +460,7 @@ class DownloadManager:
 
     def _dl_failed(self, broadcast):
         """Callback method when download fails"""
-        self.retries[broadcast.id] = (self.retries.get(broadcast.id, 1) + 1, broadcast)
+        self.retries[broadcast.id] = (self.retries.get(broadcast.id, (1, None))[0] + 1, broadcast)
         del self.active_downloads[broadcast.id]
 
     @property
