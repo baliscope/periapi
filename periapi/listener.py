@@ -57,17 +57,16 @@ class Listener:
         if self.check_backlog:
             return True
 
-        if not self.cap_invited:
-            if broadcast.username in self.follows:
-                return True
-
         elif new:
             if broadcast.username in new:
                 return True
 
         elif self.last_new_bc:
             if broadcast.start_dt > dt_parse(self.last_new_bc):
-                return True
+                if self.cap_invited:
+                    return True
+                elif broadcast.username in self.follows:
+                    return True
 
         return None
 
