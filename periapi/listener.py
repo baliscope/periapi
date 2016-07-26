@@ -48,7 +48,7 @@ class Listener:
         if self.check_backlog:
             self.check_backlog = False
 
-        self.update_latest_broadcast_time(notifications)
+        self.update_latest_broadcast_time(new_broadcasts)
 
         return new_broadcasts
 
