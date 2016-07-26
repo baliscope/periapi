@@ -87,7 +87,7 @@ class Broadcast:
         return False
 
     @property
-    def is_newer(self):
+    def isnewer(self):
         """Check if broadcast is newer than last broadcast time"""
         last_broadcast = self.api.session.config.get('last_check')
         if not last_broadcast:

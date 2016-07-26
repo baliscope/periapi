@@ -54,7 +54,7 @@ class Listener:
 
     def check_if_wanted(self, broadcast, new_follow):
         """Check if broadcast in notifications string is desired for download"""
-        if broadcast.islive or self.check_backlog or broadcast.is_newer:
+        if self.check_backlog or broadcast.isnewer or (broadcast.islive and not self.last_new_bc):
             if self.cap_invited or broadcast.username in self.follows:
                 return True
 
@@ -75,7 +75,7 @@ class Listener:
     def update_latest_broadcast_time(self, broadcasts):
         """Get most recent broadcast time from iterable of broadcast objects"""
         for broadcast in broadcasts:
-            if broadcast.is_newer:
+            if broadcast.isnewer:
                 self.last_new_bc = broadcast.start
 
     @property
