@@ -18,6 +18,7 @@ class Listener:
 
         self.check_backlog = check_backlog
         self.cap_invited = cap_invited
+        self.no_dls_yet = True
 
     def check_for_new(self):
         """Check for new broadcasts"""
@@ -48,13 +49,16 @@ class Listener:
         if self.check_backlog:
             self.check_backlog = False
 
-        self.update_latest_broadcast_time(new_broadcasts)
+        if len(new_broadcasts) > 0:
+            if self.no_dls_yet:
+                self.no_dls_yet = False
+            self.update_latest_broadcast_time(new_broadcasts)
 
         return new_broadcasts
 
     def check_if_wanted(self, broadcast, new_follow):
         """Check if broadcast in notifications string is desired for download"""
-        if self.check_backlog or broadcast.isnewer or (broadcast.islive and not self.last_new_bc):
+        if self.check_backlog or broadcast.isnewer or (broadcast.islive and self.no_dls_yet):
             if self.cap_invited or broadcast.username in self.follows:
                 return True
 
