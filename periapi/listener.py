@@ -75,7 +75,7 @@ class Listener:
     def update_latest_broadcast_time(self, broadcasts):
         """Get most recent broadcast time from iterable of broadcast objects"""
         for broadcast in broadcasts:
-            if broadcast.isnewer:
+            if broadcast.isnewer or not self.last_new_bc:
                 self.last_new_bc = broadcast.start
 
     @property
