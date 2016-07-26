@@ -72,6 +72,7 @@ class BadCLI:
             print("User could not be found.")
             return None
         self.api.follow(user_id)
+        print("Now following {}.".format(username))
 
     def unfollow_user(self, username):
         """Tries to find and unfollow the entered username"""
@@ -81,20 +82,23 @@ class BadCLI:
             print("User could not be found.")
             return None
         self.api.unfollow(user_id)
+        print("No longer following {}.".format(username))
 
     def start_autocapper(self):
         """Start autocapper running"""
+        opts = {}
 
         disable_check = input("Check all prior broadcasts? Can be very resource intensive. (y/n): ")
-        if disable_check == "y":
-            check_backlog = True
-        else:
-            check_backlog = False
+        opts["check_backlog"] = bool(disable_check == "y")
 
-        cap = AutoCap(self.api, check_backlog=check_backlog)
+        inv_check = input("Cap others' broadcasts people you're following invite you to? (y/n): ")
+        opts["cap_invited"] = bool(inv_check == "y")
+
+        cap = AutoCap(self.api, opts)
         cap.start()
 
     def set_download_directory(self):
+        """Changes the download directory"""
         if not self.config.get('download_directory'):
             self.config['download_directory'] = os.path.join(os.path.expanduser('~'), 'downloads')
             self.config.write()

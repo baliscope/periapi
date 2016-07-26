@@ -41,7 +41,7 @@ if len(bc_history) > 0:
     bc_id = bc_history[0]['id']
     print('https://www.periscope.tv/w/' + bc_id)
 
-# Get one frame of the notifications broadcast feed (i.e. get notifications from users you're following)
+# Get one frame of the notifications feed (i.e. get notifications from users you're following)
 notifications_history = api.notifications
 print(notifications_history)
 
@@ -56,5 +56,5 @@ api.unfollow(uid)
 
 # Needed to prevent multiprocessing from spawning processes recursively on Windows
 if __name__ == '__main__':
-    cap = AutoCap(api)
+    cap = AutoCap(api, dict())
     cap.start()
