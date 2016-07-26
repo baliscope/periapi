@@ -24,9 +24,9 @@ class AutoCap:
 
         if not self.config.get('download_directory'):
             self.config['download_directory'] = os.path.join(os.path.expanduser('~'), 'downloads')
-            if not os.path.exists(self.config.get("download_directory")):
-                os.makedirs(self.config.get("download_directory"))
             self.config.write()
+        if not os.path.exists(self.config.get("download_directory")):
+            os.makedirs(self.config.get("download_directory"))
 
         self.listener = Listener(api=self.api, **listener_opts)
         self.downloadmgr = DownloadManager(api=self.api)
