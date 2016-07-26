@@ -58,6 +58,8 @@ class BadCLI:
                 print(e)
             except KeyboardInterrupt:
                 print("Stopping autocapper...")
+            except OSError as e:
+                print(e)
 
     def show_followed_users(self):
         """Shows who you're following"""
@@ -89,10 +91,10 @@ class BadCLI:
         opts = {}
 
         disable_check = input("Check all prior broadcasts? Can be very resource intensive. (y/n): ")
-        opts["check_backlog"] = bool(disable_check == "y")
+        opts["check_backlog"] = bool(disable_check.strip()[:1] == "y")
 
         inv_check = input("Cap others' broadcasts people you're following invite you to? (y/n): ")
-        opts["cap_invited"] = bool(inv_check == "y")
+        opts["cap_invited"] = bool(inv_check.strip()[:1] == "y")
 
         cap = AutoCap(self.api, opts)
         cap.start()

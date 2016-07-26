@@ -12,8 +12,7 @@ class Listener:
     """Class to check notifications stream for new broadcasts and return new broadcast ids"""
 
     def __init__(self, api, check_backlog=False, cap_invited=False):
-        print("Check backlog is: " + str(check_backlog))
-        print("Cap Invited is: " + str(cap_invited))
+
         self.api = api
 
         self.follows = set([i['username'] for i in self.api.following])
