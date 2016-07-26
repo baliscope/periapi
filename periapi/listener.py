@@ -3,8 +3,6 @@
 Periscope API for the masses
 """
 
-from dateutil.parser import parse as dt_parse
-
 from periapi.broadcast import Broadcast
 
 
@@ -50,23 +48,18 @@ class Listener:
         if self.check_backlog:
             self.check_backlog = False
 
+        self.update_latest_broadcast_time(notifications)
+
         return new_broadcasts
 
-    def check_if_wanted(self, broadcast, new):
+    def check_if_wanted(self, broadcast, new_follow):
         """Check if broadcast in notifications string is desired for download"""
-        if self.check_backlog:
-            return True
-
-        elif new:
-            if broadcast.username in new:
+        if broadcast.islive or self.check_backlog or broadcast.is_newer:
+            if self.cap_invited or broadcast.username in self.follows:
                 return True
 
-        elif self.last_new_bc:
-            if broadcast.start_dt > dt_parse(self.last_new_bc):
-                if self.cap_invited:
-                    return True
-                elif broadcast.username in self.follows:
-                    return True
+        elif new_follow and broadcast.username in new_follow:
+            return True
 
         return None
 
@@ -78,6 +71,12 @@ class Listener:
         if len(new_follows) > 0:
             return new_follows
         return None
+
+    def update_latest_broadcast_time(self, broadcasts):
+        """Get most recent broadcast time from iterable of broadcast objects"""
+        for broadcast in broadcasts:
+            if broadcast.is_newer:
+                self.last_new_bc = broadcast.start
 
     @property
     def last_new_bc(self):

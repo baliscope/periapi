@@ -6,8 +6,6 @@ Periscope API for the masses
 import os
 import time
 
-from dateutil.parser import parse as dt_parse
-
 from periapi.downloadmgr import DownloadManager, current_datetimestring
 from periapi.listener import Listener
 
@@ -26,6 +24,8 @@ class AutoCap:
 
         if not self.config.get('download_directory'):
             self.config['download_directory'] = os.path.join(os.path.expanduser('~'), 'downloads')
+            if not os.path.exists(self.config.get("download_directory")):
+                os.makedirs(self.config.get("download_directory"))
             self.config.write()
 
         self.listener = Listener(api=self.api, **listener_opts)
@@ -36,13 +36,11 @@ class AutoCap:
 
         while self.keep_running:
 
-            if not os.path.exists(self.config.get("download_directory")):
-                os.makedirs(self.config.get("download_directory"))
-
             new_broadcasts = self.listener.check_for_new()
 
             if new_broadcasts:
-                self._send_to_downloader(new_broadcasts)
+                for broadcast in new_broadcasts:
+                    self.downloadmgr.start_dl(broadcast)
 
             if not self.quiet_mode:
                 print(self._status)
@@ -59,16 +57,9 @@ class AutoCap:
         input("Press enter at any time to stop the Autocapper on its next loop\n")
         self.keep_running = False
 
-    def _send_to_downloader(self, new_bcs):
+    def _(self, new_bcs):
         """Unpack results from listener and start download. Set latest dl time."""
-        for broadcast in new_bcs:
-            self.downloadmgr.start_dl(broadcast)
 
-            if self.listener.last_new_bc:
-                if broadcast.start_dt > dt_parse(self.listener.last_new_bc):
-                    self.listener.last_new_bc = broadcast.start
-            else:
-                self.listener.last_new_bc = broadcast.start
 
     @property
     def _status(self):
