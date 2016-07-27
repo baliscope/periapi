@@ -27,6 +27,12 @@ class Broadcast:
             self.info = updates
             self.info['download_directory'] = dl_directory
 
+    def num_restarts(self, timespan=10):
+        """Gets number of times download has been started within past timespan seconds"""
+        if len(self.dl_times) > 0:
+            return [i for i in self.dl_times if i > i[-1]-timespan]
+        return 0
+
     @property
     def id(self):
         """Returns broadcast id"""
@@ -120,9 +126,3 @@ class Broadcast:
         """Set broadcast availability (if broadcast is deleted - set to False)"""
         self.info['available_for_replay'] = boolean
 
-    @property
-    def number_of_restarts(self, timespan=10):
-        """Gets number of times download has been started within past timespan seconds"""
-        if len(self.dl_times) > 0:
-            return [i for i in self.dl_times if i > i[-1]-timespan]
-        return 0
