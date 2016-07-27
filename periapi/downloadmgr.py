@@ -80,6 +80,8 @@ def replay_downloaded(broadcast):
 def start_download(broadcast):
     """Starts download using pyriscope"""
     try:
+        broadcast.dl_times.append(time.time())
+
         os.chdir(broadcast.download_directory)
 
         if broadcast.isreplay and replay_downloaded(broadcast):
@@ -139,7 +141,10 @@ class DownloadManager:
          """
         if broadcast.islive:
             broadcast.update_info()
-            if broadcast.available and not broadcast.islive:
+            if broadcast.number_of_restarts > 4 or broadcast.number_of_restarts(timespan=60) > 10:
+                print("[{0}] Too many live resume attempts: {1}".format(current_datetimestring(),
+                                                                        broadcast.title))
+            elif broadcast.available and not broadcast.islive:
                 print("[{0}] Downloading replay of: {1}".format(current_datetimestring(),
                                                                 broadcast.title))
                 self.start_dl(broadcast)
