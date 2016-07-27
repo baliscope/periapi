@@ -95,6 +95,13 @@ class PeriAPI:
             {"user_id": self.pubid}
             )
 
+    def lookup_private(self, broadcast_id):
+        """Gets broadcast info (like rtmps url) for private broadcasts"""
+        return self._post(
+            'https://api.periscope.tv/api/v2/accessChannel',
+            {'broadcast_id': broadcast_id}
+            )
+
     def get_broadcast_info(self, broadcast_id):
         """Returns broadcast dictionary"""
         return self._get_unauth(

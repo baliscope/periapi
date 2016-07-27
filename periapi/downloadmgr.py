@@ -91,9 +91,6 @@ def start_download(broadcast):
 
         pyriscope.processor.process([url, '-C', '-n', broadcast.filename])
 
-        if broadcast.islive:
-            rename_live(broadcast)
-
         if download_successful(broadcast):
             return True, broadcast.id
         else:
@@ -107,6 +104,10 @@ def start_download(broadcast):
 
     except BaseException:
         return False, broadcast.id
+
+    finally:
+        if broadcast.islive:
+            rename_live(broadcast)
 
 
 class DownloadManager:
