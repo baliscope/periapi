@@ -15,6 +15,7 @@ class Broadcast:
         self.info['download_directory'] = self.api.session.config.get('download_directory')
 
         self.dl_times = list()
+        self.dl_failures = 0
 
     def update_info(self):
         """Updates broadcast object with latest info from periscope"""
@@ -27,10 +28,10 @@ class Broadcast:
             self.info = updates
             self.info['download_directory'] = dl_directory
 
-    def num_restarts(self, timespan=10):
+    def num_restarts(self, span=10):
         """Gets number of times download has been started within past timespan seconds"""
         if len(self.dl_times) > 0:
-            return [i for i in self.dl_times if i > i[-1]-timespan]
+            return len([i for i in self.dl_times if i > i[-1]-span])
         return 0
 
     @property
@@ -125,4 +126,3 @@ class Broadcast:
     def available(self, boolean):
         """Set broadcast availability (if broadcast is deleted - set to False)"""
         self.info['available_for_replay'] = boolean
-

@@ -10,12 +10,10 @@ from multiprocessing.pool import Pool
 
 import pyriscope.processor
 
-
 BROADCAST_URL_FORMAT = 'https://www.periscope.tv/w/'
 CORES_TO_USE = -(-os.cpu_count() // 2)
 EXTENSIONS = ['.mp4', '.ts']
 MAX_DOWNLOAD_ATTEMPTS = 3
-
 
 pyriscope.processor.FFMPEG_LIVE = pyriscope.processor.FFMPEG_LIVE.replace('error', 'quiet')
 pyriscope.processor.FFMPEG_ROT = pyriscope.processor.FFMPEG_ROT.replace('error', 'quiet')
@@ -85,25 +83,25 @@ def start_download(broadcast):
         os.chdir(broadcast.download_directory)
 
         if broadcast.isreplay and replay_downloaded(broadcast):
-            return True, broadcast.id
+            return True, broadcast
 
         url = BROADCAST_URL_FORMAT + broadcast.id
 
         pyriscope.processor.process([url, '-C', '-n', broadcast.filename])
 
         if download_successful(broadcast):
-            return True, broadcast.id
+            return True, broadcast
         else:
-            return False, broadcast.id
+            return False, broadcast
 
     except SystemExit as _:
         if not _.code or _.code == 0:
-            return True, broadcast.id
+            return True, broadcast
         else:
-            return False, broadcast.id
+            return False, broadcast
 
     except BaseException:
-        return False, broadcast.id
+        return False, broadcast
 
     finally:
         if broadcast.islive:
@@ -117,7 +115,7 @@ class DownloadManager:
         self.api = api
 
         self.config = self.api.session.config
-        self.retries = dict()
+        self.retry = dict()
 
         self.download_progress = dict()
 
@@ -156,23 +154,26 @@ class DownloadManager:
 
     def redownload_failed(self):
         """Check list of retries and redownload or send to failed as appropriate"""
-        if len(self.retries) == 0:
+        if len(self.retry) == 0:
             return None
 
         purge_list = list()
-        for bc_id in self.retries:
+        for bc_id in self.retry:
 
-            attempts = self.retries[bc_id][0]
-            broadcast = self.retries[bc_id][1]
+            broadcast = self.retry[bc_id]
+            broadcast.dl_failures += 1
             broadcast.update_info()
 
-            if attempts <= MAX_DOWNLOAD_ATTEMPTS and (broadcast.islive or broadcast.available):
+            if broadcast.dl_failures <= MAX_DOWNLOAD_ATTEMPTS and \
+                    (broadcast.islive or broadcast.available):
 
-                print("[{0}] Attempt ({1} of {2}): "
-                      "Redownloading {3}".format(current_datetimestring(),
-                                                 attempts,
-                                                 MAX_DOWNLOAD_ATTEMPTS,
-                                                 broadcast.title))
+                print("[{0}] Redownload Attempt ({1} of {2}): {3}".format(
+                    current_datetimestring(),
+                    broadcast.dl_failures,
+                    MAX_DOWNLOAD_ATTEMPTS,
+                    broadcast.title
+                )
+                     )
 
                 self.start_dl(broadcast)
 
@@ -183,12 +184,11 @@ class DownloadManager:
                 purge_list.append(bc_id)
 
         for bc_id in purge_list:
-            del self.retries[bc_id]
+            del self.retry[bc_id]
 
     def _callback_dispatcher(self, results):
         """Unpacks callback argument and passes to appropriate cleanup method"""
-        broadcast = self.active_downloads[results[1]]
-        download_ok = results[0]
+        download_ok, broadcast = results
         if download_ok:
             self._dl_complete(broadcast)
         else:
@@ -203,7 +203,7 @@ class DownloadManager:
 
     def _dl_failed(self, broadcast):
         """Callback method when download fails"""
-        self.retries[broadcast.id] = (self.retries.get(broadcast.id, (1, None))[0] + 1, broadcast)
+        self.retry[broadcast.id] = broadcast
         del self.active_downloads[broadcast.id]
 
     @property
