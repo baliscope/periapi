@@ -57,10 +57,6 @@ class AutoCap:
         input("Press enter at any time to stop the Autocapper on its next loop\n")
         self.keep_running = False
 
-    def _(self, new_bcs):
-        """Unpack results from listener and start download. Set latest dl time."""
-
-
     @property
     def _status(self):
         """Retrieve status string for printing to console"""
