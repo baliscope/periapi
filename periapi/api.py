@@ -4,7 +4,6 @@ Periscope API for the masses
 """
 
 from functools import wraps
-from json import JSONDecodeError
 
 from .login import LoginSession
 from .logging import logging
@@ -46,7 +45,7 @@ class PeriAPI:
         logging.debug("%s: params:%r result=%r", url, payload, res)
         try:
             return res.json()
-        except JSONDecodeError:
+        except ValueError:
             return dict()
 
     @property
