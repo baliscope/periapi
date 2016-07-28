@@ -31,7 +31,7 @@ class Broadcast:
     def num_restarts(self, span=10):
         """Gets number of times download has been started within past timespan seconds"""
         if len(self.dl_times) > 0:
-            return len([i for i in self.dl_times if i > i[-1]-span])
+            return len([i for i in self.dl_times if i > self.dl_times[-1]-span])
         return 0
 
     @property
