@@ -140,7 +140,7 @@ class DownloadManager:
          """
         if broadcast.islive:
             broadcast.update_info()
-            if broadcast.num_restarts(timespan=15) > 4 or broadcast.num_restarts(timespan=60) > 10:
+            if broadcast.num_restarts(span=15) > 4 or broadcast.num_restarts(span=60) > 10:
                 print("[{0}] Too many live resume attempts: {1}".format(current_datetimestring(),
                                                                         broadcast.title))
             elif broadcast.available and not broadcast.islive:
