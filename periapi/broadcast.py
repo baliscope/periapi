@@ -72,9 +72,14 @@ class Broadcast:
     @property
     def title(self):
         """Title of broadcast (in the context of the downloader)"""
+        suffix = []
         if not self.islive and self.available:
-            return ' '.join([self.username, self.startdate, self.starttime, self.id, 'REPLAY'])
-        return ' '.join([self.username, self.startdate, self.starttime, self.id])
+            suffix.append('REPLAY')
+        if self.private:
+            suffix.append('PRIVATE')
+        if len(suffix) == 0:
+            return ' '.join([self.username, self.startdate, self.starttime, self.id])
+        return ' '.join([self.username, self.startdate, self.starttime, self.id, ' '.join(suffix)])
 
     @property
     def filename(self):
@@ -126,3 +131,7 @@ class Broadcast:
     def available(self, boolean):
         """Set broadcast availability (if broadcast is deleted - set to False)"""
         self.info['available_for_replay'] = boolean
+
+    @property
+    def private(self):
+        return self.info['is_locked']

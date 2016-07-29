@@ -6,7 +6,7 @@ Periscope API for the masses
 import os
 import time
 
-from periapi.downloadmgr import DownloadManager, current_datetimestring
+from periapi.downloadmgr import DownloadManager
 from periapi.listener import Listener
 
 DEFAULT_NOTIFICATION_INTERVAL = 15
@@ -43,7 +43,7 @@ class AutoCap:
                     self.downloadmgr.start_dl(broadcast)
 
             if not self.quiet_mode:
-                print(self._status)
+                print(self.downloadmgr.status)
 
             time.sleep(self.interval)
 
@@ -56,18 +56,6 @@ class AutoCap:
         """Stops autocapper loop"""
         input("Press enter at any time to stop the Autocapper on its next loop\n")
         self.keep_running = False
-
-    @property
-    def _status(self):
-        """Retrieve status string for printing to console"""
-        active = len(self.downloadmgr.active_downloads)
-        complete = len(self.downloadmgr.completed_downloads)
-        failed = len(self.downloadmgr.failed_downloads)
-
-        cur_status = "{0} active downloads, {1} completed downloads, " \
-                     "{2} failed downloads".format(active, complete, failed)
-
-        return "[{0}] {1}".format(current_datetimestring(), cur_status)
 
     @property
     def interval(self):

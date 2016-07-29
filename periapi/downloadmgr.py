@@ -7,17 +7,11 @@ import os
 import sys
 import time
 from multiprocessing.pool import Pool
+from periapi.download import Download
 
-import pyriscope.processor
 
-BROADCAST_URL_FORMAT = 'https://www.periscope.tv/w/'
 CORES_TO_USE = -(-os.cpu_count() // 2)
-EXTENSIONS = ['.mp4', '.ts']
 MAX_DOWNLOAD_ATTEMPTS = 3
-
-pyriscope.processor.FFMPEG_LIVE = pyriscope.processor.FFMPEG_LIVE.replace('error', 'quiet')
-pyriscope.processor.FFMPEG_ROT = pyriscope.processor.FFMPEG_ROT.replace('error', 'quiet')
-pyriscope.processor.FFMPEG_NOROT = pyriscope.processor.FFMPEG_NOROT.replace('error', 'quiet')
 
 
 def current_datetimestring():
@@ -25,87 +19,10 @@ def current_datetimestring():
     return " ".join([time.strftime('%x'), time.strftime('%X')])
 
 
-def download_successful(broadcast):
-    """Checks if download was successful"""
-    checks = 3
-    waittime = 5
-
-    _ = 0
-    while _ < checks:
-        for bcdescriptor in ['', '.live']:
-            for extension in EXTENSIONS:
-                filename = broadcast.filename + bcdescriptor + extension
-                if os.path.exists(os.path.join(broadcast.download_directory, filename)):
-                    return True
-        time.sleep(waittime)
-        _ += 1
-
-    return False
-
-
 def initialize_download():
     """Write output from our pyriscope processes to devnull"""
     sys.stdout = open(os.devnull, "w")
     sys.stderr = open(os.devnull, "w")
-
-
-def rename_live(broadcast):
-    """Gives live broadcast files a number indicating what order they were gotten in. Useful when
-    capping a broadcast that cuts in and out.
-    """
-    fname = broadcast.filename
-    for extension in EXTENSIONS:
-        filename_start = os.path.join(broadcast.download_directory, fname + '.live')
-        if os.path.exists(filename_start + extension):
-            _ = 1
-            while os.path.exists(filename_start + str(_) + extension):
-                _ += 1
-            os.rename(filename_start + extension, filename_start + str(_) + extension)
-            return None
-
-
-def replay_downloaded(broadcast):
-    """Boolean indicating if given replay has been downloaded already"""
-    for extension in EXTENSIONS:
-
-        if os.path.exists(os.path.join(broadcast.download_directory,
-                                       broadcast.filename + extension)):
-            return True
-
-    return False
-
-
-def start_download(broadcast):
-    """Starts download using pyriscope"""
-    try:
-        broadcast.dl_times.append(time.time())
-
-        os.chdir(broadcast.download_directory)
-
-        if broadcast.isreplay and replay_downloaded(broadcast):
-            return True, broadcast
-
-        url = BROADCAST_URL_FORMAT + broadcast.id
-
-        pyriscope.processor.process([url, '-C', '-n', broadcast.filename])
-
-        if download_successful(broadcast):
-            return True, broadcast
-        else:
-            return False, broadcast
-
-    except SystemExit as _:
-        if not _.code or _.code == 0:
-            return True, broadcast
-        else:
-            return False, broadcast
-
-    except BaseException:
-        return False, broadcast
-
-    finally:
-        if broadcast.islive:
-            rename_live(broadcast)
 
 
 class DownloadManager:
@@ -128,7 +45,7 @@ class DownloadManager:
     def start_dl(self, broadcast):
         """Adds a download task to the multiprocessing pool"""
 
-        self.pool.apply_async(start_download, (broadcast,), callback=self._callback_dispatcher)
+        self.pool.apply_async(Download(broadcast).start, (), callback=self._callback_dispatcher)
 
         self.active_downloads[broadcast.id] = broadcast
 
@@ -205,6 +122,18 @@ class DownloadManager:
         """Callback method when download fails"""
         self.retry[broadcast.id] = broadcast
         del self.active_downloads[broadcast.id]
+
+    @property
+    def status(self):
+        """Retrieve status string for printing to console"""
+        active = len(self.active_downloads)
+        complete = len(self.completed_downloads)
+        failed = len(self.failed_downloads)
+
+        cur_status = "{0} active downloads, {1} completed downloads, " \
+                     "{2} failed downloads".format(active, complete, failed)
+
+        return "[{0}] {1}".format(current_datetimestring(), cur_status)
 
     @property
     def active_downloads(self):
