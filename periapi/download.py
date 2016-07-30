@@ -26,8 +26,8 @@ MAX_DOWNLOAD_ATTEMPTS = 3
 DEFAULT_DL_THREADS = 6
 
 EXTENSIONS = ['.mp4', '.ts']
-FFMPEG_CONVERT = "ffmpeg -y -v error -i \"{0}.ts\" -bsf:a aac_adtstoasc -codec copy \"{0}.mp4\""
-FFMPEG_LIVE = "ffmpeg -y -v error -i \"{0}\" -c copy \"{1}.ts\""
+FFMPEG_CONVERT = "ffmpeg -y -v quiet -i \"{0}.ts\" -bsf:a aac_adtstoasc -codec copy \"{0}.mp4\""
+FFMPEG_LIVE = "ffmpeg -y -v quiet -i \"{0}\" -c copy \"{1}.ts\""
 
 
 def convert_download(filename):
