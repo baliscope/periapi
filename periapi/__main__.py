@@ -5,6 +5,7 @@ Periscope API for the masses
 # pylint: disable=broad-except
 
 import os
+import shutil
 import sys
 
 from . import PeriAPI
@@ -49,7 +50,11 @@ class BadCLI:
                 elif choice == '3':
                     self.unfollow_user(input("Enter their username: "))
                 elif choice == '4':
-                    self.start_autocapper()
+                    if shutil.which('ffmpeg') is not None:
+                        self.start_autocapper()
+                    else:
+                        print("ffmpeg could not be found. "
+                              "Please put ffmpeg.exe in {}".format(os.getcwd()))
                 elif choice == '5':
                     self.set_download_directory()
                 else:
