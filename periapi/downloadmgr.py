@@ -44,24 +44,25 @@ class DownloadManager:
     def start_dl(self, broadcast):
         """Adds a download task to the multiprocessing pool"""
 
-        if broadcast.dl_failures > MAX_DOWNLOAD_ATTEMPTS:
-
+        if broadcast.dl_failures > MAX_DOWNLOAD_ATTEMPTS or \
+                not(broadcast.islive or broadcast.isreplay):
             print("[{0}] Failed: {1}".format(current_datetimestring(), broadcast.title))
             self.failed_downloads.append((current_datetimestring(), broadcast))
             return None
 
         elif broadcast.dl_failures > 0:
-
             print("[{0}] Redownload Attempt ({1} of {2}): {3}".format(
                 current_datetimestring(),
                 broadcast.dl_failures,
                 MAX_DOWNLOAD_ATTEMPTS,
                 broadcast.title))
 
+        else:
+            print("[{0}] Adding Download: {1}".format(current_datetimestring(), broadcast.title))
+
         self.pool.apply_async(Download(broadcast).start, (), callback=self._callback_dispatcher)
 
         self.active_downloads[broadcast.id] = broadcast
-        print("[{0}] Adding Download: {1}".format(current_datetimestring(), broadcast.title))
 
     def check_for_replay(self, broadcast):
         """Starts download of broadcast replay if not already gotten; or, resumes interrupted
@@ -72,13 +73,14 @@ class DownloadManager:
             if broadcast.num_restarts(span=15) > 4 or broadcast.num_restarts(span=60) > 10:
                 print("[{0}] Too many live resume attempts: {1}".format(current_datetimestring(),
                                                                         broadcast.title))
+                broadcast.dl_failures += 1
             elif broadcast.available and not broadcast.islive:
                 print("[{0}] Downloading replay of: {1}".format(current_datetimestring(),
                                                                 broadcast.title))
                 self.start_dl(broadcast)
             elif broadcast.islive:
-                print("[{0}] Continuing live download of: {1}".format(current_datetimestring(),
-                                                                      broadcast.title))
+                print("[{0}] Resuming interrupted capture of: {1}".format(current_datetimestring(),
+                                                                          broadcast.title))
                 self.start_dl(broadcast)
 
     def _callback_dispatcher(self, results):
@@ -100,6 +102,7 @@ class DownloadManager:
         """Callback method when download fails"""
         del self.active_downloads[broadcast.id]
         broadcast.dl_failures += 1
+        broadcast.update_info()
         self.start_dl(broadcast)
 
     @property
