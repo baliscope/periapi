@@ -58,8 +58,11 @@ class Listener:
 
     def check_if_wanted(self, broadcast, new_follow):
         """Check if broadcast in notifications string is desired for download"""
+        if not (broadcast.islive or broadcast.isreplay):
+            return None
+
         if self.check_backlog or broadcast.isnewer or (broadcast.islive and self.no_dls_yet):
-            if self.cap_invited or broadcast.username in self.follows:
+            if self.cap_invited or (broadcast.username in self.follows):
                 return True
 
         elif new_follow and broadcast.username in new_follow:

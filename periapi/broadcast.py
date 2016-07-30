@@ -3,6 +3,7 @@
 Periscope API for the masses
 """
 
+import os
 from dateutil.parser import parse as dt_parse
 
 
@@ -13,6 +14,7 @@ class Broadcast:
         self.api = api
         self.info = broadcast
         self.info['download_directory'] = self.api.session.config.get('download_directory')
+        self.cookie = self.api.session.config.get('cookie')[:]
 
         self.dl_times = list()
         self.dl_failures = 0
@@ -29,7 +31,7 @@ class Broadcast:
             self.info['download_directory'] = dl_directory
 
     def num_restarts(self, span=10):
-        """Gets number of times download has been started within past timespan seconds"""
+        """Gets number of times download has been started within past span seconds"""
         if len(self.dl_times) > 0:
             return len([i for i in self.dl_times if i > self.dl_times[-1]-span])
         return 0
@@ -82,8 +84,15 @@ class Broadcast:
         return ' '.join([self.username, self.startdate, self.starttime, self.id, ' '.join(suffix)])
 
     @property
-    def filename(self):
-        """Get title string adapted for use as filename"""
+    def filepathname(self):
+        """Get filename for broadcast, including path, without extension"""
+        return os.path.join(self.download_directory, self.filetitle)
+
+    @property
+    def filetitle(self):
+        """Version of title safe for use as a filename"""
+        if self.islive:
+            return self.title.replace('/', '-').replace(':', '-') + '.live'
         return self.title.replace('/', '-').replace(':', '-')
 
     @property
@@ -96,7 +105,7 @@ class Broadcast:
     @property
     def isreplay(self):
         """Check if broadcast is replay or not"""
-        if not self.islive and self.available:
+        if self.available and not self.islive:
             return True
         return False
 
@@ -134,4 +143,5 @@ class Broadcast:
 
     @property
     def private(self):
+        """Boolean indicating if broadcast is private or not"""
         return self.info['is_locked']

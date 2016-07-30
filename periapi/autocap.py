@@ -47,14 +47,11 @@ class AutoCap:
 
             time.sleep(self.interval)
 
-            self.downloadmgr.redownload_failed()
-
         self.downloadmgr.pool.close()
         self.downloadmgr.pool.join()
 
     def stop(self):
         """Stops autocapper loop"""
-        input("Press enter at any time to stop the Autocapper on its next loop\n")
         self.keep_running = False
 
     @property

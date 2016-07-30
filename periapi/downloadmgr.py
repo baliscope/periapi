@@ -20,7 +20,7 @@ def current_datetimestring():
 
 
 def initialize_download():
-    """Write output from our pyriscope processes to devnull"""
+    """Write output from our download processes to devnull (or logs if you prefer!)"""
     sys.stdout = open(os.devnull, "w")
     sys.stderr = open(os.devnull, "w")
 
@@ -32,7 +32,6 @@ class DownloadManager:
         self.api = api
 
         self.config = self.api.session.config
-        self.retry = dict()
 
         self.download_progress = dict()
 
@@ -45,10 +44,23 @@ class DownloadManager:
     def start_dl(self, broadcast):
         """Adds a download task to the multiprocessing pool"""
 
+        if broadcast.dl_failures > MAX_DOWNLOAD_ATTEMPTS:
+
+            print("[{0}] Failed: {1}".format(current_datetimestring(), broadcast.title))
+            self.failed_downloads.append((current_datetimestring(), broadcast))
+            return None
+
+        elif broadcast.dl_failures > 0:
+
+            print("[{0}] Redownload Attempt ({1} of {2}): {3}".format(
+                current_datetimestring(),
+                broadcast.dl_failures,
+                MAX_DOWNLOAD_ATTEMPTS,
+                broadcast.title))
+
         self.pool.apply_async(Download(broadcast).start, (), callback=self._callback_dispatcher)
 
         self.active_downloads[broadcast.id] = broadcast
-
         print("[{0}] Adding Download: {1}".format(current_datetimestring(), broadcast.title))
 
     def check_for_replay(self, broadcast):
@@ -69,40 +81,6 @@ class DownloadManager:
                                                                       broadcast.title))
                 self.start_dl(broadcast)
 
-    def redownload_failed(self):
-        """Check list of retries and redownload or send to failed as appropriate"""
-        if len(self.retry) == 0:
-            return None
-
-        purge_list = list()
-        for bc_id in self.retry:
-
-            broadcast = self.retry[bc_id]
-            broadcast.dl_failures += 1
-            broadcast.update_info()
-
-            if broadcast.dl_failures <= MAX_DOWNLOAD_ATTEMPTS and \
-                    (broadcast.islive or broadcast.available):
-
-                print("[{0}] Redownload Attempt ({1} of {2}): {3}".format(
-                    current_datetimestring(),
-                    broadcast.dl_failures,
-                    MAX_DOWNLOAD_ATTEMPTS,
-                    broadcast.title
-                )
-                     )
-
-                self.start_dl(broadcast)
-
-            else:
-
-                print("[{0}] Failed: {1}".format(current_datetimestring(), broadcast.title))
-                self.failed_downloads.append((current_datetimestring(), broadcast))
-                purge_list.append(bc_id)
-
-        for bc_id in purge_list:
-            del self.retry[bc_id]
-
     def _callback_dispatcher(self, results):
         """Unpacks callback argument and passes to appropriate cleanup method"""
         download_ok, broadcast = results
@@ -120,8 +98,9 @@ class DownloadManager:
 
     def _dl_failed(self, broadcast):
         """Callback method when download fails"""
-        self.retry[broadcast.id] = broadcast
         del self.active_downloads[broadcast.id]
+        broadcast.dl_failures += 1
+        self.start_dl(broadcast)
 
     @property
     def status(self):

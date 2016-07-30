@@ -1,4 +1,3 @@
-pyriscope
 oauth2>=1.9
 requests>=2.10
 path.py>=8.2
