@@ -22,6 +22,7 @@ REPLAY_FORMAT = "https://api.periscope.tv/api/v2/replayPlaylist.m3u8?broadcast_i
 PUBLIC_ACCESS = "https://api.periscope.tv/api/v2/getAccessPublic?broadcast_id={0}"
 PRIVATE_ACCESS = "https://api.periscope.tv/api/v2/accessChannel"
 
+FAIL_RESUME_WAIT = 15
 MAX_DOWNLOAD_ATTEMPTS = 3
 DEFAULT_DL_THREADS = 6
 
@@ -105,14 +106,16 @@ class Download:
             self.broadcast.dl_times.append(time.time())
 
             if self.broadcast.dl_failures > 0:
-                time.sleep(15)
+                time.sleep(FAIL_RESUME_WAIT)
                 self.broadcast.update_info()
 
             if self.broadcast.isreplay and replay_downloaded(self.broadcast):
+                self.broadcast.replay_downloaded = True
                 return True, self.broadcast
 
-            while self.broadcast.private and self.broadcast.islive:
-                time.sleep(15)
+            while (self.broadcast.private or self.broadcast.wait_for_replay) \
+                    and self.broadcast.islive:
+                time.sleep(FAIL_RESUME_WAIT)
                 self.broadcast.update_info()
 
             if self.broadcast.isreplay:
@@ -121,8 +124,14 @@ class Download:
                 self.capture_live()
 
             if download_successful(self.broadcast):
+
                 convert_download(self.broadcast.filepathname)
+                if self.broadcast.isreplay:
+                    self.broadcast.replay_downloaded = True
+                elif self.broadcast.islive:
+                    self.broadcast.dl_failures = 0
                 return True, self.broadcast
+
             else:
                 return False, self.broadcast
 

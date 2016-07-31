@@ -7,28 +7,75 @@ import os
 from dateutil.parser import parse as dt_parse
 
 
-class Broadcast:
+class BroadcastDownloadInfo:
+    """Contains information about the broadcast's download but not about the broadcast itself"""
+
+    def __init__(self, api):
+        self.dl_info = dict()
+        self.dl_info['dl_times'] = list()
+        self.dl_info['dl_failures'] = 0
+        self.dl_info['wait_for_replay'] = False
+        self.dl_info['replay_downloaded'] = False
+        self.dl_info['download_directory'] = api.session.config.get('download_directory')
+
+    @property
+    def dl_times(self):
+        """List of timestamps broadcast download was started or restarted"""
+        return self.dl_info['dl_times']
+
+    @property
+    def dl_failures(self):
+        """Counter for how many times download has failed"""
+        return self.dl_info['dl_failures']
+
+    @dl_failures.setter
+    def dl_failures(self, value):
+        """Sets download failure count"""
+        self.dl_info['dl_failures'] = value
+
+    @property
+    def download_directory(self):
+        """Returns broadcast download directory"""
+        return self.dl_info['download_directory']
+
+    @property
+    def wait_for_replay(self):
+        """Check if broadcast live should be skipped and replay should be waited for"""
+        return self.dl_info['wait_for_replay']
+
+    @wait_for_replay.setter
+    def wait_for_replay(self, boolean):
+        """Return whether or not live download should be skipped and replay should be waited for"""
+        self.dl_info['wait_for_replay'] = bool(boolean)
+
+    @property
+    def replay_downloaded(self):
+        """Boolean indicating whether or not a replay of the broadcast has been downloaded"""
+        return self.dl_info['replay_downloaded']
+
+    @replay_downloaded.setter
+    def replay_downloaded(self, boolean):
+        """Set indicator for whether or not a replay of the broadcast has been downloaded"""
+        self.dl_info['replay_downloaded'] = bool(boolean)
+
+
+class Broadcast(BroadcastDownloadInfo):
     """Broadcast object"""
 
     def __init__(self, api, broadcast):
+        super().__init__(api)
         self.api = api
         self.info = broadcast
-        self.info['download_directory'] = self.api.session.config.get('download_directory')
         self.cookie = self.api.session.config.get('cookie')[:]
-
-        self.dl_times = list()
-        self.dl_failures = 0
 
     def update_info(self):
         """Updates broadcast object with latest info from periscope"""
         updates = self.api.get_broadcast_info(self.id)
-        dl_directory = self.download_directory
         if not updates:
-            self.available = False
-            self.state = "DELETED"
+            self.info['available_for_replay'] = False
+            self.info['state'] = "DELETED"
         else:
             self.info = updates
-            self.info['download_directory'] = dl_directory
 
     def num_restarts(self, span=10):
         """Gets number of times download has been started within past span seconds"""
@@ -40,11 +87,6 @@ class Broadcast:
     def id(self):
         """Returns broadcast id"""
         return self.info['id']
-
-    @property
-    def download_directory(self):
-        """Returns broadcast download directory"""
-        return self.info.get('download_directory')
 
     @property
     def username(self):
@@ -75,7 +117,7 @@ class Broadcast:
     def title(self):
         """Title of broadcast (in the context of the downloader)"""
         suffix = []
-        if not self.islive and self.available:
+        if not self.islive:
             suffix.append('REPLAY')
         if self.private:
             suffix.append('PRIVATE')
@@ -125,21 +167,10 @@ class Broadcast:
         """Get broadcast state string"""
         return self.info['state']
 
-    @state.setter
-    def state(self, new_state):
-        """Set broadcast state string (useful if broadcast is deleted since peri deletes entire
-        broadcast object)"""
-        self.info['state'] = new_state
-
     @property
     def available(self):
         """Check if broadcast is available for replay"""
         return self.info['available_for_replay']
-
-    @available.setter
-    def available(self, boolean):
-        """Set broadcast availability (if broadcast is deleted - set to False)"""
-        self.info['available_for_replay'] = boolean
 
     @property
     def private(self):
