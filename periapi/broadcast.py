@@ -16,6 +16,7 @@ class BroadcastDownloadInfo:
         self.dl_info['dl_failures'] = 0
         self.dl_info['wait_for_replay'] = False
         self.dl_info['replay_downloaded'] = False
+        self.dl_info['last_failure_reason'] = None
         self.dl_info['download_directory'] = api.session.config.get('download_directory')
 
     @property
@@ -32,6 +33,16 @@ class BroadcastDownloadInfo:
     def dl_failures(self, value):
         """Sets download failure count"""
         self.dl_info['dl_failures'] = value
+
+    @property
+    def failure_reason(self):
+        """Gets exception object from the last failure, if any"""
+        return self.dl_info['last_failure_reason']
+
+    @failure_reason.setter
+    def failure_reason(self, raised_exception):
+        """Stores exception object from last failure, if any"""
+        self.dl_info['last_failure_reason'] = raised_exception
 
     @property
     def download_directory(self):

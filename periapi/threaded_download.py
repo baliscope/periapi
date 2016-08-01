@@ -19,7 +19,7 @@ class ReplayDeleted(Exception):
 
 
 class TasksInfo:
-    """Encapsulation of task tracking (not sure why but I'm not about to refactor all this)"""
+    """Encapsulation of task tracking (not sure why but I'm not about to refactor this)"""
     def __init__(self, name, num_tasks):
         self.name = name
         self.num_tasks = num_tasks

@@ -17,7 +17,7 @@ import requests
 
 from periapi.threaded_download import ThreadPool
 
-BROADCAST_URL_FORMAT = 'https://www.periscope.tv/w/'
+BROADCAST_URL_FORMAT = "https://www.periscope.tv/w/"
 REPLAY_FORMAT = "https://api.periscope.tv/api/v2/replayPlaylist.m3u8?broadcast_id={}&cookie={}"
 PUBLIC_ACCESS = "https://api.periscope.tv/api/v2/getAccessPublic?broadcast_id={0}"
 PRIVATE_ACCESS = "https://api.periscope.tv/api/v2/accessChannel"
@@ -34,7 +34,9 @@ FFMPEG_LIVE = "ffmpeg -y -v quiet -i \"{0}\" -c copy \"{1}.ts\""
 def convert_download(filename):
     """Uses FFMPEG to convert .ts to .mp4"""
     Popen(FFMPEG_CONVERT.format(filename), shell=True).wait()
-
+    if not os.path.exists("{}.mp4".format(filename)):
+        time.sleep(10)
+        Popen(FFMPEG_CONVERT.format(filename), shell=True).wait()
     if os.path.exists("{}.mp4".format(filename)):
         try:
             os.remove("{}.ts".format(filename))
@@ -124,7 +126,6 @@ class Download:
                 self.capture_live()
 
             if download_successful(self.broadcast):
-
                 convert_download(self.broadcast.filepathname)
                 if self.broadcast.isreplay:
                     self.broadcast.replay_downloaded = True
@@ -133,9 +134,11 @@ class Download:
                 return True, self.broadcast
 
             else:
+                self.broadcast.failure_reason = Exception("Unknown error.")
                 return False, self.broadcast
 
-        except BaseException:
+        except BaseException as _:
+            self.broadcast.failure_reason = _
             return False, self.broadcast
 
         finally:
@@ -149,7 +152,8 @@ class Download:
         access = requests.post(PRIVATE_ACCESS, json=payload).json()
 
         if not access.get('hls_url'):
-            raise Exception("Couldn't get live stream download url")
+            raise Exception("Couldn't get live stream download url. Usually means broadcast has"
+                            " been deleted/broadcaster has been banned.")
 
         download_command = FFMPEG_LIVE.format(access.get('hls_url'), self.broadcast.filepathname)
 
@@ -166,7 +170,7 @@ class Download:
         chunks = [i.strip() for i in replay_info.text.split() if "chunk" in i.lower()]
 
         if len(chunks) == 0:
-            raise Exception("No chunks available for download. Auth problem?")
+            raise Exception("No chunks available for download. May be authentication issue.")
 
         temp_dir = os.path.join(self.broadcast.download_directory,
                                 ".periapi.{}".format(self.broadcast.filetitle))

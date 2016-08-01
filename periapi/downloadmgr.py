@@ -59,13 +59,16 @@ class DownloadManager:
         if broadcast.isreplay and broadcast.replay_downloaded:
             return None
 
-        if broadcast.dl_failures > MAX_DOWNLOAD_ATTEMPTS or \
-                not (broadcast.islive or broadcast.isreplay or broadcast.dl_failures == 0):
-            print("[{0}] Failed: {1}".format(current_datetimestring(), old_title))
-            self.failed_downloads.append((current_datetimestring(), broadcast))
-            return None
+        failure_message = None
+        if broadcast.dl_failures > MAX_DOWNLOAD_ATTEMPTS:
+            failure_message = "\n\tExceeded maximum download attempts "
+            if broadcast.failure_reason is not None:
+                failure_message += "with the following error:\n\t" + str(broadcast.failure_reason)
 
-        if broadcast.islive:
+        elif not (broadcast.islive or broadcast.isreplay or broadcast.dl_failures == 0):
+            failure_message = "Broadcast no longer available."
+
+        elif broadcast.islive:
             if broadcast.num_restarts(span=15) > 4 or broadcast.num_restarts(span=60) > 10:
                 print("[{0}] Too many live resume attempts: "
                       "{1}".format(current_datetimestring(), broadcast.title))
@@ -76,9 +79,7 @@ class DownloadManager:
                     broadcast.wait_for_replay = True
 
                 else:
-                    print("[{0}] Failed: {1}".format(current_datetimestring(), broadcast.title))
-                    self.failed_downloads.append((current_datetimestring(), broadcast))
-                    return None
+                    failure_message = "\n\tToo many broadcast restarts in a short timespan."
 
             else:
                 print("[{0}] Live capture was interrupted. "
@@ -86,9 +87,7 @@ class DownloadManager:
 
         elif broadcast.dl_failures > 0:
             print("[{0}] Redownload Attempt ({1} of {2}): {3}".format(
-                current_datetimestring(),
-                broadcast.dl_failures,
-                MAX_DOWNLOAD_ATTEMPTS,
+                current_datetimestring(), broadcast.dl_failures, MAX_DOWNLOAD_ATTEMPTS,
                 broadcast.title))
 
         elif broadcast.isreplay and not broadcast.replay_downloaded:
@@ -98,7 +97,12 @@ class DownloadManager:
         else:
             return None
 
-        self.start_dl(broadcast)
+        if failure_message is not None:
+            print("[{0}] Failed: {1} {2}".format(current_datetimestring(),
+                                                 old_title, failure_message))
+            self.failed_downloads.append((current_datetimestring(), broadcast))
+        else:
+            self.start_dl(broadcast)
 
     def _callback_dispatcher(self, results):
         """Unpacks callback argument and passes to appropriate cleanup method"""
