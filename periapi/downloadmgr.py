@@ -53,6 +53,7 @@ class DownloadManager:
         """Starts download of broadcast replay if not already gotten; or, resumes interrupted
          live download. Print status to console.
          """
+        old_title = broadcast.title
         broadcast.update_info()
 
         if broadcast.isreplay and broadcast.replay_downloaded:
@@ -60,7 +61,7 @@ class DownloadManager:
 
         if broadcast.dl_failures > MAX_DOWNLOAD_ATTEMPTS or \
                 not (broadcast.islive or broadcast.isreplay or broadcast.dl_failures == 0):
-            print("[{0}] Failed: {1}".format(current_datetimestring(), broadcast.title))
+            print("[{0}] Failed: {1}".format(current_datetimestring(), old_title))
             self.failed_downloads.append((current_datetimestring(), broadcast))
             return None
 
