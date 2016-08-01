@@ -55,6 +55,9 @@ class DownloadManager:
          """
         broadcast.update_info()
 
+        if broadcast.isreplay and broadcast.replay_downloaded:
+            return None
+
         if broadcast.dl_failures > MAX_DOWNLOAD_ATTEMPTS or \
                 not (broadcast.islive or broadcast.isreplay or broadcast.dl_failures == 0):
             print("[{0}] Failed: {1}".format(current_datetimestring(), broadcast.title))
