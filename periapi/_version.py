@@ -2,4 +2,4 @@
 Periscope API for the masses
 """
 
-__version__ = "0.5.3"
+__version__ = "0.5.4"

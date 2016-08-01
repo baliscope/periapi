@@ -5,11 +5,14 @@ Periscope API for the masses
 # pylint: disable=broad-except
 
 import os
+import re
 import shutil
 import sys
 
 from . import PeriAPI
 from . import AutoCap
+
+BROADCAST_ID_PATTERN = r'1[a-zA-Z]{12}'
 
 
 def run():
@@ -39,8 +42,9 @@ class BadCLI:
                 print("\t3 - Unfollow a user")
                 print("\t4 - Start Autocapper")
                 print("\t5 - Change default download directory")
+                print("\t6 - Cleanup lives where replay has been downloaded")
                 print("\t0 - Exit\n")
-                choice = input("Please select an option (0-5): ")
+                choice = input("Please select an option (0-6): ")
                 if choice == '0':
                     enditall()
                 elif choice == '1':
@@ -57,6 +61,8 @@ class BadCLI:
                               "Please put ffmpeg.exe in {}".format(os.getcwd()))
                 elif choice == '5':
                     self.set_download_directory()
+                elif choice == '6':
+                    self.cleanup()
                 else:
                     print("Invalid selection. Please try again.")
             except ValueError as e:
@@ -117,6 +123,24 @@ class BadCLI:
             print("New directory set.")
             return None
         print("Directory does not exist or is an invalid path.")
+
+    def cleanup(self):
+        """Clean up live broadcasts that are duplicates of a downloaded replay"""
+        confirmation = input("\nThis may delete files you wish to keep. "
+                             "Are you sure you want to do this? (y/n): ")
+        if confirmation != 'y':
+            return None
+        ids_to_clean = list()
+        files_deleted = 0
+        for filename in os.listdir(self.config.get('download_directory')):
+            if 'REPLAY.mp4' in filename:
+                ids_to_clean.append(re.search(BROADCAST_ID_PATTERN, filename).group(0))
+        for filename in os.listdir(self.config.get('download_directory')):
+            if '.live' in filename:
+                if re.search(BROADCAST_ID_PATTERN, filename).group(0) in ids_to_clean:
+                    os.remove(os.path.join(self.config.get('download_directory'), filename))
+                    files_deleted += 1
+        print("{0} files were deleted.".format(files_deleted))
 
 
 if __name__ == "__main__":
