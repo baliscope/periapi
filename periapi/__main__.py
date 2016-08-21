@@ -8,6 +8,7 @@ import os
 import re
 import shutil
 import sys
+import time
 
 from . import PeriAPI
 from . import AutoCap
@@ -26,6 +27,16 @@ def enditall():
     sys.exit(0)
 
 
+def get_bc_id():
+    """Get broadcast id from user input"""
+    bc_userinput = input("\nInput broadcast ID or broadcast url: ")
+    bc_id_match = re.search(BROADCAST_ID_PATTERN, bc_userinput)
+    if not bc_id_match:
+        print("Broadcast {} not found.".format(bc_userinput))
+        return None
+    return bc_id_match.group(0)
+
+
 class BadCLI:
     """Start up a rudimentary CLI"""
 
@@ -41,10 +52,13 @@ class BadCLI:
                 print("\t2 - Follow a user")
                 print("\t3 - Unfollow a user")
                 print("\t4 - Start Autocapper")
-                print("\t5 - Change default download directory")
-                print("\t6 - Cleanup lives where replay has been downloaded")
+                print("\t5 - Cap a single broadcast")
+                print("\t6 - Cap all broadcasts by a user")
+                print("\t7 - Change default download directory")
+                print("\t8 - Delete live recordings where replay has been downloaded")
+                # print("\t9 - Heartbomb a broadcast (experimental)")
                 print("\t0 - Exit\n")
-                choice = input("Please select an option (0-6): ")
+                choice = input("Please select an option (0-8): ")
                 if choice == '0':
                     enditall()
                 elif choice == '1':
@@ -60,9 +74,15 @@ class BadCLI:
                         print("ffmpeg could not be found. "
                               "Please put ffmpeg.exe in {}".format(os.getcwd()))
                 elif choice == '5':
-                    self.set_download_directory()
+                    self.cap_one()
                 elif choice == '6':
+                    self.cap_user()
+                elif choice == '7':
+                    self.set_download_directory()
+                elif choice == '8':
                     self.cleanup()
+                # elif choice == '9':
+                #     self.heartbomb()
                 else:
                     print("Invalid selection. Please try again.")
             except ValueError as e:
@@ -142,6 +162,49 @@ class BadCLI:
                     files_deleted += 1
         print("{0} files were deleted.".format(files_deleted))
 
+    def cap_one(self):
+        """Get broadcast ID from user and run the cap_one method in autocap"""
+        broadcast_id = get_bc_id()
+        if not broadcast_id:
+            return None
+        dummy_opts = {"check_backlog": False, "cap_invited": False}
+        cap = AutoCap(self.api, dummy_opts)
+        cap.cap_one(broadcast_id)
+
+    def cap_user(self):
+        """Get username from user and run cap_user in autocap"""
+        username = input("\nInput username: ")
+        dummy_opts = {"check_backlog": False, "cap_invited": False}
+        cap = AutoCap(self.api, dummy_opts)
+        cap.cap_user(username)
+
+    # def heartbomb(self):
+    #     """Flood a broadcast with hearts"""
+    #     try:
+    #         hearts = int(input("\nHow many hearts per second? (Default is 5): "))
+    #     except:
+    #         hearts = 150
+    #     broadcast_id = get_bc_id()
+    #     if not broadcast_id:
+    #         return None
+    #     bc_access = self.api.get_access(broadcast_id)
+    #     if bc_access.get('broadcast').get('state') != "RUNNING":
+    #         print("Could not initiate heartbomb.")
+    #         return None
+    #     session = bc_access.get('session')
+    #     total_hearts = 0
+    #     bc_live = True
+    #     while bc_live:
+    #         time.sleep(1)
+    #         ping = self.api.ping_watching(broadcast_id, session, hearts)
+    #         if not ping.get('success'):
+    #             bc_live = False
+    #         else:
+    #             print(ping)
+    #             bc_live = \
+    #                 bool(self.api.get_broadcast_info(broadcast_id).get('state') == "RUNNING")
+    #         total_hearts += hearts
+    #     self.api.ping_watching(broadcast_id, session, total_hearts, stop=True)
 
 if __name__ == "__main__":
     run()

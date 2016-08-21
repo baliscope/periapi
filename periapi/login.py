@@ -180,3 +180,17 @@ class LoginSession(requests.Session):
         if resp.status_code != 200:
             raise IOError("API call failed: {}".format(resp.status_code))
         return resp.json()
+
+    def multipart_post_peri(self, *args, **kw):
+        """Make a multipart post to the peri API"""
+
+        # stuff in the cookie, if there is a payload
+        payload = kw.get("files")
+        if payload is not None:
+            payload["cookie"] = ('', self.cookie)
+            kw["files"] = payload
+            logging.debug("payload: %r", payload)
+        resp = self.post(*args, **kw)
+        if resp.status_code != 200:
+            raise IOError("API call failed: {}".format(resp.status_code))
+        return resp.json()

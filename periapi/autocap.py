@@ -8,6 +8,7 @@ import time
 
 from periapi.downloadmgr import DownloadManager
 from periapi.listener import Listener
+from periapi.broadcast import Broadcast
 
 DEFAULT_NOTIFICATION_INTERVAL = 15
 
@@ -53,6 +54,35 @@ class AutoCap:
     def stop(self):
         """Stops autocapper loop"""
         self.keep_running = False
+
+    def cap_one(self, broadcast_id):
+        """Cap a single broadcast"""
+        broadcast_info = self.api.get_access(broadcast_id).get('broadcast')
+        broadcast = Broadcast(self.api, broadcast_info)
+        self.downloadmgr.start_dl(broadcast)
+        while len(self.downloadmgr.active_downloads) > 0:
+            if not self.quiet_mode:
+                print(self.downloadmgr.status)
+            time.sleep(self.interval)
+        self.downloadmgr.pool.close()
+        self.downloadmgr.pool.join()
+
+    def cap_user(self, username):
+        """Cap all broadcasts by a user"""
+        user_id = self.api.find_user_id(username)
+        broadcasts = self.api.get_user_broadcast_history(user_id)
+        if len(broadcasts) < 1:
+            print("No broadcast history found for {}".format(username))
+            return None
+        for i in broadcasts:
+            broadcast = Broadcast(self.api, i)
+            self.downloadmgr.start_dl(broadcast)
+        while len(self.downloadmgr.active_downloads) > 0:
+            if not self.quiet_mode:
+                print(self.downloadmgr.status)
+            time.sleep(self.interval)
+        self.downloadmgr.pool.close()
+        self.downloadmgr.pool.join()
 
     @property
     def interval(self):

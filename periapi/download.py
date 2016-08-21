@@ -18,7 +18,7 @@ import requests
 from periapi.threaded_download import ThreadPool
 
 BROADCAST_URL_FORMAT = "https://www.periscope.tv/w/"
-REPLAY_FORMAT = "https://api.periscope.tv/api/v2/replayPlaylist.m3u8?broadcast_id={}&cookie={}"
+REPLAY_ACCESS = "https://api.periscope.tv/api/v2/replayPlaylist.m3u8?broadcast_id={}&cookie={}"
 PUBLIC_ACCESS = "https://api.periscope.tv/api/v2/getAccessPublic?broadcast_id={0}"
 PRIVATE_ACCESS = "https://api.periscope.tv/api/v2/accessChannel"
 
@@ -134,7 +134,7 @@ class Download:
                 return True, self.broadcast
 
             else:
-                self.broadcast.failure_reason = Exception("Unknown error.")
+                self.broadcast.failure_reason = BaseException("Unknown error.")
                 return False, self.broadcast
 
         except BaseException as _:
@@ -214,7 +214,7 @@ class Download:
 
     def _get_chunk_info_private(self):
         """Get the necessary credentials and list of chunks to download a private replay"""
-        replay_url = REPLAY_FORMAT.format(self.broadcast.id, quote(self.broadcast.cookie))
+        replay_url = REPLAY_ACCESS.format(self.broadcast.id, quote(self.broadcast.cookie))
 
         with requests.Session() as _:
             _.headers.update(self.headers)

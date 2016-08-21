@@ -39,17 +39,24 @@ class PeriAPI:
         logging.debug("%s: params:%r result=%r", url, payload, res)
         return res
 
-    def _get_unauth(self, url, payload=None):
+    def _get(self, url, payload=None):
         """Get request to API (Periscope uses query strings here, not json)"""
-        res = self.session.get(url, params=payload)
+        res = self.session.get(url, params=payload or {})
         logging.debug("%s: params:%r result=%r", url, payload, res)
         try:
             return res.json()
         except ValueError:
             return dict()
 
+    def _multipart_post(self, url, payload=None):
+        """Post 'multipart/form-data' to Periscope. Needed for some endpoints"""
+        res = self.session.multipart_post_peri(url, files=payload)
+        logging.debug("%s: params:%r result=%r", url, payload, res)
+        return res
+
     @property
     def pubid(self):
+        """Gets public id"""
         if not self._pubid:
             self._pubid = self.find_user_id(self.session.name)
             self.session.config["pubid"] = self._pubid
@@ -94,7 +101,7 @@ class PeriAPI:
             {"user_id": self.pubid}
             )
 
-    def lookup_private(self, broadcast_id):
+    def get_access(self, broadcast_id):
         """Gets broadcast info (like rtmps url) for private broadcasts"""
         return self._post(
             'https://api.periscope.tv/api/v2/accessChannel',
@@ -103,7 +110,7 @@ class PeriAPI:
 
     def get_broadcast_info(self, broadcast_id):
         """Returns broadcast dictionary"""
-        return self._get_unauth(
+        return self._get(
             'https://api.periscope.tv/api/v2/getBroadcastPublic',
             {'broadcast_id': broadcast_id}
             ).get('broadcast')
@@ -119,3 +126,17 @@ class PeriAPI:
             if res["username"].casefold() == username:
                 return res["id"]
         raise ValueError("User not found")
+
+    def ping_watching(self, broadcast_id, session, n_hearts, stop=False):
+        """This needs to be called every 30 sec in order to be considered "watching" a stream"""
+        if stop:
+            endpoint = "https://api.periscope.tv/api/v2/stopWatching"
+        else:
+            endpoint = "https://api.periscope.tv/api/v2/pingWatching"
+        return self._multipart_post(
+            endpoint,
+            {"broadcast_id": ('', broadcast_id),
+             "session": ('', session),
+             "n_comments": ('', '0'),
+             "n_hearts": ('', str(n_hearts))}
+        )
