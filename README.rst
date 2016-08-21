@@ -10,7 +10,7 @@ Getting Setup (for noobs)
 0. Have a Twitter account setup to log in to Periscope. (You may need to re-verify your Twitter account if it's brand new after running this program the first time.)
 1. Install Python 3 if you don't have it. Python 3.4 or better is needed. https://www.python.org/downloads/
 2. Open a command prompt (Powershell or cmd on Windows, for example) and type :code:`pip3 install https://github.com/baliscope/periapi/archive/master.zip`. This will install periapi and its dependencies.
-3. Download ffmpeg and, for Windows, add :code:`ffmpeg.exe` to path as shown here: http://stackoverflow.com/questions/23400030/windows-7-add-path or place :code:`ffmpeg.exe` in the same directory as :code:`pyriscope.exe` (typically the Scripts folder in your Python install directory).
+3. Download ffmpeg and, for Windows, add :code:`ffmpeg.exe` to path as shown here: http://stackoverflow.com/questions/23400030/windows-7-add-path or place :code:`ffmpeg.exe` in the same directory as :code:`periapi.exe` (typically the Scripts folder in your Python install directory).
 4. Open a command prompt and type :code:`periapi`.
 5. You will need to have the periscope consumer key and consumer secret and input it the first time you run the program. Don't ask here for that information. Pastebin contains useful tips.
 6. Default download directory is :code:`~\Downloads` (on Windows, this is :code:`C:\Users\<your name>\Downloads`).
