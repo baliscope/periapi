@@ -29,7 +29,7 @@ def enditall():
 
 def get_bc_id():
     """Get broadcast id from user input"""
-    bc_userinput = input("\nInput broadcast ID or broadcast url: ")
+    bc_userinput = input("\nInput broadcast ID or broadcast URL: ")
     bc_id_match = re.search(BROADCAST_ID_PATTERN, bc_userinput)
     if not bc_id_match:
         print("Broadcast {} not found.".format(bc_userinput))
@@ -53,7 +53,7 @@ class BadCLI:
                 print("\t3 - Unfollow a user")
                 print("\t4 - Start Autocapper")
                 print("\t5 - Cap a single broadcast")
-                print("\t6 - Cap all broadcasts by a user")
+                print("\t6 - Cap all past broadcasts by a user")
                 print("\t7 - Change default download directory")
                 print("\t8 - Delete live recordings where replay has been downloaded")
                 # print("\t9 - Heartbomb a broadcast (experimental)")

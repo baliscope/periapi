@@ -10,7 +10,7 @@ from multiprocessing.pool import Pool
 from periapi.download import Download
 
 
-CORES_TO_USE = -(-os.cpu_count() // 2)
+CORES_TO_USE = os.cpu_count()
 MAX_DOWNLOAD_ATTEMPTS = 3
 
 
@@ -66,7 +66,7 @@ class DownloadManager:
                 failure_message += "with the following error:\n\t" + str(broadcast.failure_reason)
 
         elif not (broadcast.islive or broadcast.isreplay or broadcast.dl_failures == 0):
-            failure_message = "Broadcast no longer available."
+            failure_message = "\n\tBroadcast no longer available."
 
         elif broadcast.islive:
             if broadcast.num_restarts(span=15) > 4 or broadcast.num_restarts(span=60) > 10:
