@@ -17,13 +17,16 @@ from .logging import logging
 RTOKEN_URL = 'https://api.twitter.com/oauth/request_token?oauth_callback=oob'
 ATOKEN_URL = 'https://api.twitter.com/oauth/access_token'
 AUTH_URL = 'https://api.twitter.com/oauth/authorize'
-VERIFY_URL = 'https://api.twitter.com/1.1/account/verify_credentials.json?'\
+VERIFY_URL = 'https://api.twitter.com/1.1/account/verify_credentials.json?' \
              'include_entities=false&skip_status=true'
 PERI_LOGIN_URL = 'https://api.periscope.tv/api/v2/loginTwitter'
+PERI_VERIFY_URL = 'https://api.periscope.tv/api/v2/verifyUsername'
+PERI_VALIDATE_URL = 'https://api.periscope.tv/api/v2/validateUsername'
 
 
 class PeriConfig(dict):
     """Persistent peri config dict"""
+
     def __init__(self, *args, **kw):
         super().__init__(*args, **kw)
         self.file = path(".peri.conf")
@@ -66,7 +69,7 @@ class LoginSession(requests.Session):
         self.headers.update({
             'User-Agent': 'Periscope/3313 (iPhone; iOS 7.1.1; Scale/2.00)',
             "Accept-Encoding": "gzip, deflate",
-            })
+        })
 
         cookie = config.get("cookie", "")
 
@@ -90,7 +93,7 @@ class LoginSession(requests.Session):
         cons_sec = config.get("consumer_secret")
         if not cons_key or not cons_sec:
             cons_key = input("Please input the Periscope consumer key: ")
-            cons_sec = input("please input the Periscope consumer secret: ")
+            cons_sec = input("Please input the Periscope consumer secret: ")
 
         # Set up our OAuth request headers, sign the request, etc.
         consumer = oauth.Consumer(cons_key, cons_sec)
@@ -101,23 +104,23 @@ class LoginSession(requests.Session):
         resp, content = client.request(RTOKEN_URL, 'GET')
         if resp['status'] != '200':
             raise IOError(
-                'Could not initialize authentication process with Twitter. Check'
-                ' consumer key/consumer secret validity and try again.')
+                    'Could not initialize authentication process with Twitter. Check'
+                    ' consumer key/consumer secret validity and try again.')
 
         # Parse the response from Twitter's API and use it to load the
         # authorization page
         request_token = dict(parse_qsl(content.decode('utf-8')))
-        print('open this:\n{0}?oauth_token={1}'.format(
-            AUTH_URL, request_token['oauth_token']))
+        print('Open this website and authorize:\n{0}?oauth_token={1}'.format(
+                AUTH_URL, request_token['oauth_token']))
 
         # Get the Twitter PIN number from the user
         oauth_verifier = input('Please enter the PIN: ')
 
         # Prepare our second OAuth request now that we have authorization
         token = oauth.Token(
-            request_token['oauth_token'],
-            request_token['oauth_token_secret']
-            )
+                request_token['oauth_token'],
+                request_token['oauth_token_secret']
+        )
         token.set_verifier(oauth_verifier)
         client = oauth.Client(consumer, token)
 
@@ -127,19 +130,19 @@ class LoginSession(requests.Session):
         resp, content = client.request(ATOKEN_URL, 'POST')
         if resp['status'] != '200':
             raise IOError(
-                'Could not complete authentication process with Twitter')
+                    'Could not complete authentication process with Twitter')
         access_token = dict(parse_qsl(content.decode('utf-8')))
 
         # Get the User ID and Username from Twitter
         token = oauth.Token(
-            access_token['oauth_token'],
-            access_token['oauth_token_secret']
-            )
+                access_token['oauth_token'],
+                access_token['oauth_token_secret']
+        )
         client = oauth.Client(consumer, token)
         resp, content = client.request(VERIFY_URL, 'GET')
         if resp['status'] != '200':
             raise IOError(
-                'Could not complete verification process with Twitter')
+                    'Could not complete verification process with Twitter')
         user_info = json.loads(content.decode('utf-8'))
 
         config["token"] = access_token["oauth_token"]
@@ -164,12 +167,59 @@ class LoginSession(requests.Session):
         if resp.status_code != 200:
             raise IOError('Could not complete authentication with Periscope')
         cookie = config["cookie"] = resp.json()["cookie"]
+
+        # Verify that user is registered with Periscope
+
+        test_payload = {'cookie': config["cookie"]}
+        try:
+            resp = self.post('https://api.periscope.tv/api/v2/followingBroadcastFeed',
+                             json=test_payload)
+
+        except:
+            raise IOError('Could not complete authentication with Periscope')
+        if resp.status_code == 200:
+            config['username_validated'] = True
+
+        while not config.get('username_validated'):
+
+            # check if username is available
+            validate_payload = {
+                'session_secret': config["token_secret"],
+                'session_key': config["token"],
+                'username': config["name"],
+                'cookie': config["cookie"]
+            }
+            try:
+                resp = self.post(PERI_VALIDATE_URL, json=validate_payload)
+            except:
+                raise IOError('Could not complete authentication with Periscope')
+
+            if len(resp.json().get("errors")) > 0:
+                config["name"] = input("Username {} is already taken as a display name on "
+                                       "Periscope. Please enter a new one: ".format(config["name"]))
+                continue
+
+            # once available username has been selected, register it
+            verify_payload = {
+                'session_secret': config["token_secret"],
+                'session_key': config["token"],
+                'username': config["name"],
+                'display_name': config["name"],
+                'cookie': config["cookie"]
+            }
+            try:
+                resp = self.post(PERI_VERIFY_URL, json=verify_payload)
+            except:
+                raise IOError('Could not complete authentication with Periscope')
+
+            if resp.json().get("success"):
+                config["username_validated"] = True
+
         config.write()
         return cookie
 
     def post_peri(self, *args, **kw):
         """Make a post to the peri API"""
-
         # stuff in the cookie, if there is a payload
         payload = kw.get("json")
         if payload is not None:
@@ -183,7 +233,6 @@ class LoginSession(requests.Session):
 
     def multipart_post_peri(self, *args, **kw):
         """Make a multipart post to the peri API"""
-
         # stuff in the cookie, if there is a payload
         payload = kw.get("files")
         if payload is not None:
@@ -194,3 +243,6 @@ class LoginSession(requests.Session):
         if resp.status_code != 200:
             raise IOError("API call failed: {}".format(resp.status_code))
         return resp.json()
+
+    def validate_account(self):
+        """Make sure account is registed with Periscope and if not, register it"""
