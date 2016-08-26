@@ -83,7 +83,8 @@ class DownloadManager:
 
             else:
                 print("[{0}] Live capture was interrupted. "
-                      "Resuming: {1}".format(current_datetimestring(), broadcast.title))
+                      "Broadcast still live, attempting to resume: {1}".format(
+                        current_datetimestring(), broadcast.title))
 
         elif broadcast.dl_failures > 0:
             print("[{0}] Redownload Attempt ({1} of {2}): {3}".format(
@@ -113,7 +114,8 @@ class DownloadManager:
             print("[{0}] Completed: {1}".format(current_datetimestring(), broadcast.title))
             self.completed_downloads.append((current_datetimestring(), broadcast))
         else:
-            broadcast.dl_failures += 1
+            if not broadcast.islive:
+                broadcast.dl_failures += 1
 
         self.review_broadcast_status(broadcast)
 
