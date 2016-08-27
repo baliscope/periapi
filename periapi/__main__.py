@@ -117,18 +117,32 @@ class BadCLI:
         self.api.unfollow(user_id)
         print("No longer following {}.".format(username))
 
-    def start_autocapper(self):
+    def start_autocapper(self, opts_override=None):
         """Start autocapper running"""
-        opts = {}
 
-        disable_check = input("Check all prior broadcasts? Can be very resource intensive. (y/n): ")
-        opts["check_backlog"] = bool(disable_check.strip()[:1] == "y")
+        if not opts_override:
+            opts = {}
 
-        inv_check = input("Cap others' broadcasts people you're following invite you to? (y/n): ")
-        opts["cap_invited"] = bool(inv_check.strip()[:1] == "y")
+            disable_check = input("Check all prior broadcasts? Can be very resource intensive. "
+                                  "(y/n): ")
+            opts["check_backlog"] = bool(disable_check.strip()[:1] == "y")
 
-        cap = AutoCap(self.api, opts)
-        cap.start()
+            inv_check = input("Cap others' broadcasts people you're following invite you to? "
+                              "(y/n): ")
+            opts["cap_invited"] = bool(inv_check.strip()[:1] == "y")
+        else:
+            opts = opts_override
+
+        try:
+            cap = AutoCap(self.api, opts)
+            cap.start()
+        except OSError as _:
+            if "404" in _:
+                print(_)
+                print("Attempting to re-start autocapper in 15 seconds....")
+                time.sleep(15)
+                self.start_autocapper(opts_override=opts)
+        return None
 
     def set_download_directory(self):
         """Changes the download directory"""
