@@ -43,7 +43,8 @@ class DownloadManager:
 
     def start_dl(self, broadcast):
         """Adds a download task to the multiprocessing pool"""
-        print("[{0}] Adding Download: {1}".format(current_datetimestring(), broadcast.title))
+        if not broadcast.stutter_resume:
+            print("[{0}] Adding Download: {1}".format(current_datetimestring(), broadcast.title))
 
         self.pool.apply_async(Download(broadcast).start, (), callback=self._callback_dispatcher)
 
@@ -81,10 +82,10 @@ class DownloadManager:
                 else:
                     failure_message = "\n\tToo many broadcast restarts in a short timespan."
 
-            else:
+            elif not broadcast.stutter_resume:
                 print("[{0}] Live capture was interrupted. "
                       "Broadcast still live, attempting to resume: {1}".format(
-                        current_datetimestring(), broadcast.title))
+                          current_datetimestring(), broadcast.title))
 
         elif broadcast.dl_failures > 0:
             print("[{0}] Redownload Attempt ({1} of {2}): {3}".format(
@@ -114,7 +115,9 @@ class DownloadManager:
             print("[{0}] Completed: {1}".format(current_datetimestring(), broadcast.title))
             self.completed_downloads.append((current_datetimestring(), broadcast))
         else:
-            if not broadcast.islive:
+            if broadcast.islive:
+                broadcast.stutter_resume = True
+            else:
                 broadcast.dl_failures += 1
 
         self.review_broadcast_status(broadcast)

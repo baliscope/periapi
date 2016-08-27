@@ -16,6 +16,7 @@ class BroadcastDownloadInfo:
         self.dl_info['dl_failures'] = 0
         self.dl_info['wait_for_replay'] = False
         self.dl_info['replay_downloaded'] = False
+        self.dl_info['stutter_resume'] = False
         self.dl_info['last_failure_reason'] = None
         self.dl_info['download_directory'] = api.session.config.get('download_directory')
 
@@ -68,6 +69,16 @@ class BroadcastDownloadInfo:
     def replay_downloaded(self, boolean):
         """Set indicator for whether or not a replay of the broadcast has been downloaded"""
         self.dl_info['replay_downloaded'] = bool(boolean)
+
+    @property
+    def stutter_resume(self):
+        """Boolean indicating whether or not broadcast is being resumed from a stutter"""
+        return self.dl_info['stutter_resume']
+
+    @stutter_resume.setter
+    def stutter_resume(self, boolean):
+        """Set boolean indicating whether or not broadcast is being resumed from a stutter"""
+        self.dl_info['stutter_resume'] = bool(boolean)
 
 
 class Broadcast(BroadcastDownloadInfo):
