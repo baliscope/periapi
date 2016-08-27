@@ -114,6 +114,7 @@ class DownloadManager:
         if download_ok:
             print("[{0}] Completed: {1}".format(current_datetimestring(), broadcast.title))
             self.completed_downloads.append((current_datetimestring(), broadcast))
+            broadcast.stutter_resume = False
         else:
             if broadcast.islive:
                 broadcast.stutter_resume = True
