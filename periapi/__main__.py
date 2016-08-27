@@ -142,6 +142,8 @@ class BadCLI:
                 print("Attempting to re-start autocapper in 15 seconds....")
                 time.sleep(15)
                 self.start_autocapper(opts_override=opts)
+            else:
+                raise OSError(_)
         return None
 
     def set_download_directory(self):
