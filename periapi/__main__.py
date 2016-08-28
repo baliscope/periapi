@@ -64,9 +64,11 @@ class BadCLI:
                 elif choice == '1':
                     self.show_followed_users()
                 elif choice == '2':
-                    self.follow_user(input("Enter their username: "))
+                    self.follow_user(input("Enter their username. If following more than one, "
+                                           "separate them with commas: "))
                 elif choice == '3':
-                    self.unfollow_user(input("Enter their username: "))
+                    self.unfollow_user(input("Enter their username. If unfollowing more than one, "
+                                             "separate them with commas: "))
                 elif choice == '4':
                     if shutil.which('ffmpeg') is not None:
                         self.start_autocapper()
@@ -97,25 +99,33 @@ class BadCLI:
         for i in self.api.following:
             print(i['username'])
 
-    def follow_user(self, username):
-        """Tries to find and follow the entered username"""
-        try:
-            user_id = self.api.find_user_id(username)
-        except ValueError:
-            print("User could not be found.")
+    def follow_user(self, usernames):
+        """Tries to find and follow the entered username or usernames"""
+        if len(usernames) == 0:
             return None
-        self.api.follow(user_id)
-        print("Now following {}.".format(username))
 
-    def unfollow_user(self, username):
-        """Tries to find and unfollow the entered username"""
-        try:
-            user_id = self.api.find_user_id(username)
-        except ValueError:
-            print("User could not be found.")
+        for username in [_.strip() for _ in usernames.split(",")]:
+            try:
+                user_id = self.api.find_user_id(username)
+            except ValueError:
+                print("User {} could not be found.".format(username))
+                continue
+            self.api.follow(user_id)
+            print("Now following {}.".format(username))
+
+    def unfollow_user(self, usernames):
+        """Tries to find and unfollow the entered username or usernames"""
+        if len(usernames) == 0:
             return None
-        self.api.unfollow(user_id)
-        print("No longer following {}.".format(username))
+
+        for username in [_.strip() for _ in usernames.split(",")]:
+            try:
+                user_id = self.api.find_user_id(username)
+            except ValueError:
+                print("User {} could not be found.".format(username))
+                continue
+            self.api.unfollow(user_id)
+            print("No longer following {}.".format(username))
 
     def start_autocapper(self, opts_override=None):
         """Start autocapper running"""

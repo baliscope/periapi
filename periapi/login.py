@@ -147,7 +147,7 @@ class LoginSession(requests.Session):
 
         config["token"] = access_token["oauth_token"]
         config["token_secret"] = access_token["oauth_token_secret"]
-        config["name"] = user_info["screen_name"]
+        config["twitter_name"] = user_info["screen_name"]
         config["uid"] = user_info["id_str"]
         logging.debug("access %r", access_token)
         logging.debug("user_info %r", user_info)
@@ -156,7 +156,7 @@ class LoginSession(requests.Session):
             'session_secret': config["token_secret"],
             'session_key': config["token"],
             'user_id': config["uid"],
-            'user_name': config["name"],
+            'user_name': config["twitter_name"],
             'phone_number': '',
             'vendor_id': '',
             'bundle_id': 'com.bountylabs.periscope',
@@ -167,14 +167,14 @@ class LoginSession(requests.Session):
         if resp.status_code != 200:
             raise IOError('Could not complete authentication with Periscope')
         cookie = config["cookie"] = resp.json()["cookie"]
+        config["name"] = resp.json().get("user").get("username")
+        config["pubid"] = resp.json().get("user").get("id")
 
         # Verify that user is registered with Periscope
 
-        test_payload = {'cookie': config["cookie"]}
+        test_payload = {"user_id": config["pubid"]}
         try:
-            resp = self.post('https://api.periscope.tv/api/v2/followingBroadcastFeed',
-                             json=test_payload)
-
+            resp = self.post('https://api.periscope.tv/api/v2/following', json=test_payload)
         except:
             raise IOError('Could not complete authentication with Periscope')
         if resp.status_code == 200:
