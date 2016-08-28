@@ -54,6 +54,14 @@ Functionality Notes
 8. Once a live broadcast is finished, an attempt will be made to download the replay for that live broadcast.
 9. If a replay is being downloaded and the replay is deleted during download, the replay download will stop and leave behind a folder containing what fragments of the replay it was able to grab.
 
+Acknowledgements
+----------------
+
+* Dolos for teaching me how to actually write Python (blame for all errors and shitty programming is on me, though!)
+* Russel Harkanson for pyriscope, from which I took ideas for how to arrange the download logic
+* crusherw for providing a patch to pyriscope that fixes threadpool starvation bugs
+* All the folks who've helped me find bugs and provided suggestions for features (too many to name ;) )
+
 TODO
 ----
 
