@@ -155,7 +155,8 @@ class Broadcast(BroadcastDownloadInfo):
         if not self.lock_name:
             if self.islive:
                 self._original_filetitle = self.title.replace('/', '-').replace(':', '-') + '.live'
-            self._original_filetitle = self.title.replace('/', '-').replace(':', '-')
+            else:
+                self._original_filetitle = self.title.replace('/', '-').replace(':', '-')
         return self._original_filetitle
 
     @property
