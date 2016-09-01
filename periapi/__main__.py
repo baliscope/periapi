@@ -178,17 +178,30 @@ class BadCLI:
         confirmation = input("\nThis may delete files you wish to keep. "
                              "Are you sure you want to do this? (y/n): ")
         if confirmation != 'y':
+            print("Canceled.")
             return None
-        ids_to_clean = list()
+
         files_deleted = 0
-        for filename in os.listdir(self.config.get('download_directory')):
-            if 'REPLAY.mp4' in filename:
-                ids_to_clean.append(re.search(BROADCAST_ID_PATTERN, filename).group(0))
-        for filename in os.listdir(self.config.get('download_directory')):
-            if '.live' in filename:
-                if re.search(BROADCAST_ID_PATTERN, filename).group(0) in ids_to_clean:
-                    os.remove(os.path.join(self.config.get('download_directory'), filename))
-                    files_deleted += 1
+        for directory, subdirs, files in os.walk(self.config.get('download_directory')):
+            ids_to_clean = list()
+
+            for filename in files:
+                if 'REPLAY.mp4' in filename:
+                    ids_to_clean.append(re.search(BROADCAST_ID_PATTERN, filename).group(0))
+
+            for filename in files:
+                if '.live' in filename:
+                    try:
+                        if re.search(BROADCAST_ID_PATTERN, filename).group(0) in ids_to_clean:
+                            os.remove(os.path.join(directory, filename))
+                            files_deleted += 1
+                    except:
+                        print("{} could not be deleted.".format(filename))
+
+            for idx in range(len(subdirs)-1, -1, -1):
+                if '.periapi' in subdirs[idx]:
+                    del subdirs[idx]
+
         print("{0} files were deleted.".format(files_deleted))
 
     def cap_one(self):
