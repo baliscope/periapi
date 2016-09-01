@@ -43,52 +43,44 @@ class DownloadManager:
 
     def start_dl(self, broadcast):
         """Adds a download task to the multiprocessing pool"""
-        if not broadcast.stutter_resume:
-            print("[{0}] Adding Download: {1}".format(current_datetimestring(), broadcast.title))
+        print("[{0}] Adding Download: {1}".format(current_datetimestring(), broadcast.title))
 
         self.pool.apply_async(Download(broadcast).start, (), callback=self._callback_dispatcher)
 
         self.active_downloads[broadcast.id] = broadcast
 
-    def review_broadcast_status(self, broadcast):
+    def review_broadcast_status(self, broadcast, download_ok):
         """Starts download of broadcast replay if not already gotten; or, resumes interrupted
          live download. Print status to console.
          """
         old_title = broadcast.title
+        broadcast.lock_name = False
         broadcast.update_info()
 
         if broadcast.isreplay and broadcast.replay_downloaded:
             return None
 
+        elif download_ok and broadcast.islive:
+            broadcast.dl_failures += 1
+
         failure_message = None
         if broadcast.dl_failures > MAX_DOWNLOAD_ATTEMPTS:
-            failure_message = "\n\tExceeded maximum download attempts "
-            if broadcast.failure_reason is not None:
-                failure_message += "with the following error:\n\t" + str(broadcast.failure_reason)
+            if broadcast.islive and broadcast.available:
+                broadcast.wait_for_replay = True
+                broadcast.dl_failures = 0
+                print("[{0}] Too many live resume attempts, waiting for replay: {1} {2}".format(
+                    current_datetimestring(), old_title, failure_message))
+            else:
+                failure_message = "\n\tExceeded maximum download attempts "
+                if broadcast.failure_reason is not None:
+                    failure_message += "with the following error:\n\t" + \
+                                       str(broadcast.failure_reason)
 
         elif not (broadcast.islive or broadcast.isreplay or broadcast.dl_failures == 0):
             failure_message = "\n\tBroadcast no longer available."
 
-        elif broadcast.islive:
-            if broadcast.num_restarts(span=15) > 4 or broadcast.num_restarts(span=60) > 10:
-                print("[{0}] Too many live resume attempts: "
-                      "{1}".format(current_datetimestring(), broadcast.title))
-
-                if broadcast.available:
-                    print("[{0}] Pausing and waiting for replay: "
-                          "{1}".format(current_datetimestring(), broadcast.title))
-                    broadcast.wait_for_replay = True
-
-                else:
-                    failure_message = "\n\tToo many broadcast restarts in a short timespan."
-
-            elif not broadcast.stutter_resume:
-                print("[{0}] Live capture was interrupted. "
-                      "Broadcast still live, attempting to resume: {1}".format(
-                          current_datetimestring(), broadcast.title))
-
         elif broadcast.dl_failures > 0:
-            print("[{0}] Redownload Attempt ({1} of {2}): {3}".format(
+            print("[{0}] Resuming download (Attempt {1} of {2}): {3}".format(
                 current_datetimestring(), broadcast.dl_failures, MAX_DOWNLOAD_ATTEMPTS,
                 broadcast.title))
 
@@ -114,14 +106,10 @@ class DownloadManager:
         if download_ok:
             print("[{0}] Completed: {1}".format(current_datetimestring(), broadcast.title))
             self.completed_downloads.append((current_datetimestring(), broadcast))
-            broadcast.stutter_resume = False
         else:
-            if broadcast.islive:
-                broadcast.stutter_resume = True
-            else:
-                broadcast.dl_failures += 1
+            broadcast.dl_failures += 1
 
-        self.review_broadcast_status(broadcast)
+        self.review_broadcast_status(broadcast, download_ok)
 
     @property
     def status(self):

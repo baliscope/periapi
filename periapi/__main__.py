@@ -56,9 +56,12 @@ class BadCLI:
                 print("\t6 - Cap all past broadcasts by a user")
                 print("\t7 - Change default download directory")
                 print("\t8 - Delete live recordings where replay has been downloaded")
-                # print("\t9 - Heartbomb a broadcast (experimental)")
+                if self.config.get('separate_folders'):
+                    print("\t9 - Turn OFF separate folder downloads for each user")
+                else:
+                    print("\t9 - Turn ON separate folder downloads for each user")
                 print("\t0 - Exit\n")
-                choice = input("Please select an option (0-8): ")
+                choice = input("Please select an option (0-9): ")
                 if choice == '0':
                     enditall()
                 elif choice == '1':
@@ -83,8 +86,8 @@ class BadCLI:
                     self.set_download_directory()
                 elif choice == '8':
                     self.cleanup()
-                # elif choice == '9':
-                #     self.heartbomb()
+                elif choice == '9':
+                    self.config['separate_folders'] = not self.config.get('separate_folders')
                 else:
                     print("Invalid selection. Please try again.")
             except ValueError as e:

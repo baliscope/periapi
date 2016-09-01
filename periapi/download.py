@@ -70,20 +70,6 @@ def grab_chunk(url, path, headers, cookies):
             temp_file.write(block)
 
 
-def rename_live(broadcast):
-    """Gives live broadcast files a number indicating what order they were gotten in. Useful when
-    capping a broadcast that cuts in and out.
-    """
-    for extension in EXTENSIONS:
-        if os.path.exists(broadcast.filepathname + extension):
-            _ = 1
-            while os.path.exists(broadcast.filepathname + str(_) + extension):
-                _ += 1
-            os.rename(broadcast.filepathname + extension,
-                      broadcast.filepathname + str(_) + extension)
-            return None
-
-
 def replay_downloaded(broadcast):
     """Boolean indicating if given replay has been downloaded already"""
     for extension in EXTENSIONS:
@@ -104,9 +90,9 @@ class Download:
 
     def start(self):
         """Start broadcast download"""
-        try:
-            self.broadcast.dl_times.append(time.time())
+        self.broadcast.lock_name = True
 
+        try:
             if self.broadcast.dl_failures > 0:
                 time.sleep(FAIL_RESUME_WAIT)
                 self.broadcast.update_info()
@@ -126,7 +112,10 @@ class Download:
                 self.capture_live()
 
             if download_successful(self.broadcast):
-                convert_download(self.broadcast.filepathname)
+                try:
+                    convert_download(self.broadcast.filepathname)
+                except BaseException:
+                    pass
                 if self.broadcast.isreplay:
                     self.broadcast.replay_downloaded = True
                 elif self.broadcast.islive:
@@ -141,12 +130,9 @@ class Download:
             self.broadcast.failure_reason = _
             return False, self.broadcast
 
-        finally:
-            if self.broadcast.islive:
-                rename_live(self.broadcast)
-
     def capture_live(self):
         """Get necessary info to cap a live broadcast with FFMPEG, and send to FFMPEG"""
+
         payload = {'broadcast_id': self.broadcast.id, 'cookie': self.broadcast.cookie}
 
         access = requests.post(PRIVATE_ACCESS, json=payload).json()
@@ -155,9 +141,44 @@ class Download:
             raise Exception("Couldn't get live stream download url. Usually means broadcast has"
                             " been deleted/broadcaster has been banned.")
 
-        download_command = FFMPEG_LIVE.format(access.get('hls_url'), self.broadcast.filepathname)
+        temp_dir = os.path.join(self.broadcast.download_directory,
+                                ".periapi.{}".format(self.broadcast.filetitle))
 
-        Popen(download_command, shell=True).wait()
+        if not os.path.exists(temp_dir):
+            os.makedirs(temp_dir)
+
+        filepaths = []
+        _ = 0
+        while self.broadcast.islive:
+            _ += 1
+            self.broadcast.dl_times.append(time.time())
+            filepaths.append(os.path.join(temp_dir, "chunk{}".format(_)))
+
+            download_command = FFMPEG_LIVE.format(access.get('hls_url'), filepaths[-1])
+            Popen(download_command, shell=True).wait()
+
+            self.broadcast.update_info()
+
+        for ext in EXTENSIONS:
+            if os.path.isfile("{}{}".format(self.broadcast.filepathname, ext)):
+                _ = 1
+                while os.path.isfile("{}.old-{}{}".format(self.broadcast.filepathname, _, ext)):
+                    _ += 1
+                os.rename("{}{}".format(self.broadcast.filepathname, ext),
+                          "{}.old-{}{}".format(self.broadcast.filepathname, _, ext))
+
+        with open("{}.ts".format(self.broadcast.filepathname), 'wb') as handle:
+            for path in filepaths:
+                chunk = '{}.ts'.format(path)
+                if not os.path.exists(chunk) or os.path.getsize(chunk) == 0:
+                    continue
+                with open(chunk, 'rb') as ts_file:
+                    handle.write(ts_file.read())
+
+        try:
+            shutil.rmtree(temp_dir)
+        except BaseException:
+            pass
 
     def download_replay(self):
         """Download chunks of broadcast replay and assemble into single .ts"""
@@ -184,6 +205,8 @@ class Download:
             path = os.path.join(temp_dir, chunk)
             url = '/'.join((server_directory, chunk))
             chunk_pool.add_task(grab_chunk, url, path, self.headers, cookies)
+
+        self.broadcast.dl_times.append(time.time())
 
         chunk_pool.wait_completion()
 

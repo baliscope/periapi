@@ -10,15 +10,13 @@ from dateutil.parser import parse as dt_parse
 class BroadcastDownloadInfo:
     """Contains information about the broadcast's download but not about the broadcast itself"""
 
-    def __init__(self, api):
+    def __init__(self):
         self.dl_info = dict()
         self.dl_info['dl_times'] = list()
         self.dl_info['dl_failures'] = 0
         self.dl_info['wait_for_replay'] = False
         self.dl_info['replay_downloaded'] = False
-        self.dl_info['stutter_resume'] = False
         self.dl_info['last_failure_reason'] = None
-        self.dl_info['download_directory'] = api.session.config.get('download_directory')
 
     @property
     def dl_times(self):
@@ -46,11 +44,6 @@ class BroadcastDownloadInfo:
         self.dl_info['last_failure_reason'] = raised_exception
 
     @property
-    def download_directory(self):
-        """Returns broadcast download directory"""
-        return self.dl_info['download_directory']
-
-    @property
     def wait_for_replay(self):
         """Check if broadcast live should be skipped and replay should be waited for"""
         return self.dl_info['wait_for_replay']
@@ -70,25 +63,20 @@ class BroadcastDownloadInfo:
         """Set indicator for whether or not a replay of the broadcast has been downloaded"""
         self.dl_info['replay_downloaded'] = bool(boolean)
 
-    @property
-    def stutter_resume(self):
-        """Boolean indicating whether or not broadcast is being resumed from a stutter"""
-        return self.dl_info['stutter_resume']
-
-    @stutter_resume.setter
-    def stutter_resume(self, boolean):
-        """Set boolean indicating whether or not broadcast is being resumed from a stutter"""
-        self.dl_info['stutter_resume'] = bool(boolean)
-
 
 class Broadcast(BroadcastDownloadInfo):
     """Broadcast object"""
 
     def __init__(self, api, broadcast):
-        super().__init__(api)
+        super().__init__()
         self.api = api
         self.info = broadcast
         self.cookie = self.api.session.config.get('cookie')[:]
+        self.lock_name = False
+        self._original_title = self.title
+        self._original_filetitle = self.filetitle
+        self.dl_info['download_directory'] = self.api.session.config.get('download_directory')[:]
+        self.dl_info['separate_folders'] = self.api.session.config.get('separate_folders')
 
     def update_info(self):
         """Updates broadcast object with latest info from periscope"""
@@ -102,8 +90,15 @@ class Broadcast(BroadcastDownloadInfo):
     def num_restarts(self, span=10):
         """Gets number of times download has been started within past span seconds"""
         if len(self.dl_times) > 0:
-            return len([i for i in self.dl_times if i > self.dl_times[-1]-span])
+            return len([i for i in self.dl_times if i > self.dl_times[-1] - span])
         return 0
+
+    @property
+    def download_directory(self):
+        """Returns broadcast download directory"""
+        if self.dl_info['separate_folders']:
+            return os.path.join(self.dl_info['download_directory'], self.username)
+        return self.dl_info['download_directory']
 
     @property
     def id(self):
@@ -138,14 +133,16 @@ class Broadcast(BroadcastDownloadInfo):
     @property
     def title(self):
         """Title of broadcast (in the context of the downloader)"""
-        suffix = []
-        if not self.islive:
-            suffix.append('REPLAY')
-        if self.private:
-            suffix.append('PRIVATE')
-        if len(suffix) == 0:
-            return ' '.join([self.username, self.startdate, self.starttime, self.id])
-        return ' '.join([self.username, self.startdate, self.starttime, self.id, ' '.join(suffix)])
+        if not self.lock_name:
+            suffix = []
+            if not self.islive:
+                suffix.append('REPLAY')
+            if self.private:
+                suffix.append('PRIVATE')
+            self._original_title = ' '.join(
+                [self.username, self.startdate, self.starttime, self.id, ' '.join(suffix)])
+
+        return self._original_title.strip()
 
     @property
     def filepathname(self):
@@ -155,9 +152,11 @@ class Broadcast(BroadcastDownloadInfo):
     @property
     def filetitle(self):
         """Version of title safe for use as a filename"""
-        if self.islive:
-            return self.title.replace('/', '-').replace(':', '-') + '.live'
-        return self.title.replace('/', '-').replace(':', '-')
+        if not self.lock_name:
+            if self.islive:
+                self._original_filetitle = self.title.replace('/', '-').replace(':', '-') + '.live'
+            self._original_filetitle = self.title.replace('/', '-').replace(':', '-')
+        return self._original_filetitle
 
     @property
     def islive(self):
