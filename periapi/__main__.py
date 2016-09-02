@@ -138,11 +138,11 @@ class BadCLI:
 
             disable_check = input("Check all prior broadcasts? Can be very resource intensive. "
                                   "(y/n): ")
-            opts["check_backlog"] = bool(disable_check.strip()[:1] == "y")
+            opts["check_backlog"] = bool(disable_check.strip().lower()[:1] == "y")
 
             inv_check = input("Cap others' broadcasts people you're following invite you to? "
                               "(y/n): ")
-            opts["cap_invited"] = bool(inv_check.strip()[:1] == "y")
+            opts["cap_invited"] = bool(inv_check.strip().lower()[:1] == "y")
         else:
             opts = opts_override
 
@@ -177,7 +177,7 @@ class BadCLI:
         """Clean up live broadcasts that are duplicates of a downloaded replay"""
         confirmation = input("\nThis may delete files you wish to keep. "
                              "Are you sure you want to do this? (y/n): ")
-        if confirmation != 'y':
+        if confirmation != 'y' or confirmation != "Y":
             print("Canceled.")
             return None
 
