@@ -80,14 +80,14 @@ class Broadcast(BroadcastDownloadInfo):
 
     def update_info(self):
         """Updates broadcast object with latest info from periscope"""
-        self._original_title = self.title
-        self._original_filetitle = self.filetitle
         updates = self.api.get_broadcast_info(self.id)
         if not updates:
             self.info['available_for_replay'] = False
             self.info['state'] = "DELETED"
         else:
             self.info = updates
+        self._original_title = self.title
+        self._original_filetitle = self.filetitle
 
     def num_restarts(self, span=10):
         """Gets number of times download has been started within past span seconds"""

@@ -91,6 +91,7 @@ class Download:
     def start(self):
         """Start broadcast download"""
         self.broadcast.lock_name = True
+        was_replay = self.broadcast.isreplay
 
         try:
             if self.broadcast.dl_failures > 0:
@@ -116,10 +117,8 @@ class Download:
                     convert_download(self.broadcast.filepathname)
                 except BaseException:
                     pass
-                if self.broadcast.isreplay:
+                if was_replay:
                     self.broadcast.replay_downloaded = True
-                elif self.broadcast.islive:
-                    self.broadcast.dl_failures = 0
                 return True, self.broadcast
 
             else:
