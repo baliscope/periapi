@@ -149,14 +149,10 @@ class BadCLI:
         try:
             cap = AutoCap(self.api, opts)
             cap.start()
-        except OSError as _:
-            if "404" in _:
-                print(_)
+        except (TimeoutError, ConnectionError):
                 print("Attempting to re-start autocapper in 15 seconds....")
                 time.sleep(15)
                 self.start_autocapper(opts_override=opts)
-            else:
-                raise OSError(_)
         return None
 
     def set_download_directory(self):
