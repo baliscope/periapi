@@ -10,6 +10,10 @@ import shutil
 import sys
 import time
 
+from socket import timeout, gaierror
+from requests import exceptions
+from requests.packages.urllib3.exceptions import NewConnectionError
+
 from . import PeriAPI
 from . import AutoCap
 
@@ -90,12 +94,12 @@ class BadCLI:
                     self.config['separate_folders'] = not self.config.get('separate_folders')
                 else:
                     print("Invalid selection. Please try again.")
-            except ValueError as e:
-                print(e)
+            except ValueError as error:
+                print(error)
             except KeyboardInterrupt:
                 print("Stopping autocapper...")
-            except OSError as e:
-                print(e)
+            except OSError as error:
+                print(error)
 
     def show_followed_users(self):
         """Shows who you're following"""
@@ -145,14 +149,13 @@ class BadCLI:
             opts["cap_invited"] = bool(inv_check.strip().lower()[:1] == "y")
         else:
             opts = opts_override
-
         try:
             cap = AutoCap(self.api, opts)
             cap.start()
-        except (TimeoutError, ConnectionError):
-                print("Attempting to re-start autocapper in 15 seconds....")
-                time.sleep(15)
-                self.start_autocapper(opts_override=opts)
+        except (exceptions.ConnectionError, NewConnectionError, timeout, gaierror):
+            print("Attempting to re-start autocapper in 15 seconds....")
+            time.sleep(15)
+            self.start_autocapper(opts_override=opts)
         return None
 
     def set_download_directory(self):
@@ -191,7 +194,7 @@ class BadCLI:
                         if re.search(BROADCAST_ID_PATTERN, filename).group(0) in ids_to_clean:
                             os.remove(os.path.join(directory, filename))
                             files_deleted += 1
-                    except:
+                    except BaseException:
                         print("{} could not be deleted.".format(filename))
 
             for idx in range(len(subdirs)-1, -1, -1):

@@ -124,6 +124,11 @@ class DownloadManager:
         return "[{0}] {1}".format(current_datetimestring(), cur_status)
 
     @property
+    def currently_downloading(self):
+        """Returns list of the broadcast.title property of all active broadcast downloads"""
+        return [broadcast.title for _, broadcast in self.active_downloads.items()]
+
+    @property
     def active_downloads(self):
         """Return dictionary of active downloads"""
         return self.download_progress['active']
