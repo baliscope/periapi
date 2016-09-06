@@ -176,7 +176,7 @@ class BadCLI:
         """Clean up live broadcasts that are duplicates of a downloaded replay"""
         confirmation = input("\nThis may delete files you wish to keep. "
                              "Are you sure you want to do this? (y/n): ")
-        if confirmation != 'y' or confirmation != "Y":
+        if confirmation.lower() != 'y':
             print("Canceled.")
             return None
 
