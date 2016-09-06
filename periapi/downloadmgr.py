@@ -7,6 +7,7 @@ import os
 import sys
 import time
 from multiprocessing.pool import Pool
+from multiprocessing import Semaphore
 from periapi.download import Download
 
 
@@ -40,6 +41,7 @@ class DownloadManager:
         self.download_progress['failed'] = list()
 
         self.pool = Pool(CORES_TO_USE, initializer=initialize_download, maxtasksperchild=1)
+        self.sema = Semaphore()
 
     def start_dl(self, broadcast):
         """Adds a download task to the multiprocessing pool"""
@@ -47,7 +49,9 @@ class DownloadManager:
 
         self.pool.apply_async(Download(broadcast).start, (), callback=self._callback_dispatcher)
 
+        self.sema.acquire()
         self.active_downloads[broadcast.id] = broadcast
+        self.sema.release()
 
     def review_broadcast_status(self, broadcast, download_ok):
         """Starts download of broadcast replay if not already gotten; or, resumes interrupted
@@ -94,18 +98,24 @@ class DownloadManager:
         if failure_message is not None:
             print("[{0}] Failed: {1} {2}".format(current_datetimestring(),
                                                  old_title, failure_message))
+            self.sema.acquire()
             self.failed_downloads.append((current_datetimestring(), broadcast))
+            self.sema.release()
         else:
             self.start_dl(broadcast)
 
     def _callback_dispatcher(self, results):
         """Unpacks callback argument and passes to appropriate cleanup method"""
         download_ok, broadcast = results
+        self.sema.acquire()
         del self.active_downloads[broadcast.id]
+        self.sema.release()
 
         if download_ok:
             print("[{0}] Completed: {1}".format(current_datetimestring(), broadcast.title))
+            self.sema.acquire()
             self.completed_downloads.append((current_datetimestring(), broadcast))
+            self.sema.release()
         else:
             broadcast.dl_failures += 1
 
@@ -114,9 +124,11 @@ class DownloadManager:
     @property
     def status(self):
         """Retrieve status string for printing to console"""
+        self.sema.acquire()
         active = len(self.active_downloads)
         complete = len(self.completed_downloads)
         failed = len(self.failed_downloads)
+        self.sema.release()
 
         cur_status = "{0} active downloads, {1} completed downloads, " \
                      "{2} failed downloads".format(active, complete, failed)
@@ -126,7 +138,10 @@ class DownloadManager:
     @property
     def currently_downloading(self):
         """Returns list of the broadcast.title property of all active broadcast downloads"""
-        return [broadcast.title for _, broadcast in self.active_downloads.items()]
+        self.sema.acquire()
+        _ = [broadcast.title for _, broadcast in self.active_downloads.items()]
+        self.sema.release()
+        return _
 
     @property
     def active_downloads(self):

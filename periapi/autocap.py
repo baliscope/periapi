@@ -61,10 +61,14 @@ class AutoCap:
         broadcast_info = self.api.get_access(broadcast_id).get('broadcast')
         broadcast = Broadcast(self.api, broadcast_info)
         self.downloadmgr.start_dl(broadcast)
-        while len(self.downloadmgr.active_downloads) > 0:
+        _ = len(self.downloadmgr.active_downloads)
+        while _ > 0:
             if not self.quiet_mode:
                 print(self.downloadmgr.status)
             time.sleep(self.interval)
+            self.downloadmgr.sema.acquire()
+            _ = len(self.downloadmgr.active_downloads)
+            self.downloadmgr.sema.release()
         self.downloadmgr.pool.close()
         self.downloadmgr.pool.join()
 
@@ -78,10 +82,14 @@ class AutoCap:
         for i in broadcasts:
             broadcast = Broadcast(self.api, i)
             self.downloadmgr.start_dl(broadcast)
-        while len(self.downloadmgr.active_downloads) > 0:
+        _ = len(self.downloadmgr.active_downloads)
+        while _ > 0:
             if not self.quiet_mode:
                 print(self.downloadmgr.status)
             time.sleep(self.interval)
+            self.downloadmgr.sema.acquire()
+            _ = len(self.downloadmgr.active_downloads)
+            self.downloadmgr.sema.release()
         self.downloadmgr.pool.close()
         self.downloadmgr.pool.join()
 
